@@ -26,7 +26,11 @@ model User {
   createdAt DateTime @default(now())
 }
 
-enum Role { MEMBER ADMIN OWNER }
+enum Role {
+  MEMBER
+  ADMIN
+  OWNER
+}
 
 model Account {
   id                String  @id @default(cuid())
@@ -158,7 +162,10 @@ model Reaction {
   @@unique([userId, type, prayerId])
 }
 
-enum ReactionType { AMEN PRAYING }
+enum ReactionType {
+  AMEN
+  PRAYING
+}
 
 model DayProgress {
   id          String   @id @default(cuid())
