@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+// Seed over the direct (unpooled) connection — seeding through the Neon pooler can
+// break Prisma's prepared statements mid-run. Falls back to DATABASE_URL if unset.
+const prisma = new PrismaClient({ datasourceUrl: process.env.DIRECT_URL || process.env.DATABASE_URL });
 
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@example.com";
 
