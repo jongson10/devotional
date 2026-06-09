@@ -11,11 +11,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
-        const u = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, churchId: true, name: true } });
-        (session.user as any).id = user.id;
-        (session.user as any).role = u?.role ?? "MEMBER";
-        (session.user as any).churchId = u?.churchId ?? null;
-        if (u?.name) session.user.name = u.name;
+        // Database session strategy: the adapter already loaded the full user row,
+        // so role/churchId/name are available here without an extra query per request.
+        const u = user as typeof user & { role?: "MEMBER" | "ADMIN" | "OWNER"; churchId?: string | null };
+        (session.user as any).id = u.id;
+        (session.user as any).role = u.role ?? "MEMBER";
+        (session.user as any).churchId = u.churchId ?? null;
+        if (u.name) session.user.name = u.name;
       }
       return session;
     },

@@ -11,12 +11,11 @@ export default async function HomePage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const church = user.churchId ? await prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : null;
+  const [church, series] = await Promise.all([
+    user.churchId ? prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : Promise.resolve(null),
+    user.churchId ? prisma.series.findFirst({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve(null),
+  ]);
   const tz = church?.timezone || "UTC";
-
-  const series = user.churchId
-    ? await prisma.series.findFirst({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } })
-    : null;
 
   const progressRows = series
     ? await prisma.dayProgress.findMany({ where: { userId: user.id, day: { seriesId: series.id } }, select: { dayId: true, completed: true, onTime: true } })
