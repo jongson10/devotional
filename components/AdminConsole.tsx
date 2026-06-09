@@ -65,7 +65,7 @@ function Settings() {
   return (
     <Card>
       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Church settings</div>
-      <Field label="Church name"><input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Grace Chapel" /></Field>
+      <Field label="Church name"><input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Church name" /></Field>
       <Field label="Time zone" hint="Used to decide which day's devotional is 'today'. Days unlock at midnight in this zone.">
         <select style={inputStyle} value={tz} onChange={(e) => setTz(e.target.value)}>
           {!TIMEZONES.includes(tz) && tz && <option value={tz}>{tz}</option>}

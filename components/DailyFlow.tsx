@@ -244,7 +244,8 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
         {revealed.lesson && stage === "lesson" && (<button className="btn-ghost btn-dock" onClick={() => setStage("reflect")}><i className="ti ti-pencil" /> Reflect</button>)}
         {stage === "reflect" && allReflectionsAnswered && (<button className="btn-ghost btn-dock" onClick={() => { setStage("prayer"); setActiveQ(0); }}><i className="ti ti-arrow-down" /> Continue to journal &amp; prayer</button>)}
         {stage === "reflect" && !allReflectionsAnswered && (<InputBar value={draft} setValue={setDraft} onSend={sendReflectAnswer} placeholder={`Reflection #${activeQ + 1}…`} />)}
-        {stage === "prayer" && (<InputBar value={draft} setValue={setDraft} onSend={sendPrayer} placeholder="Write your prayer…" />)}
+        {stage === "prayer" && prayerText && (<button className="btn-ghost btn-dock" onClick={() => setStage("complete")}><i className="ti ti-arrow-down" /> Continue</button>)}
+        {stage === "prayer" && !prayerText && (<InputBar value={draft} setValue={setDraft} onSend={sendPrayer} placeholder="Write your prayer…" />)}
         {stage === "complete" && !showComplete && !alreadyDone && (<button className="btn-primary" style={{ maxWidth: 320 }} onClick={completeDay}><i className="ti ti-check" /> Complete day</button>)}
         {stage === "complete" && alreadyDone && (<button className="btn-ghost btn-dock" onClick={() => setShowFeed(true)}><i className="ti ti-users" /> See reflections</button>)}
       </div>
@@ -309,8 +310,12 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
   const [reflections, setReflections] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [shown, setShown] = useState(false);
+  const [loading, setLoading] = useState(true);
   useEffect(() => { setTimeout(() => setShown(true), 20); }, []);
-  useEffect(() => { fetch("/api/reflections?feed=1").then((r) => r.json()).then((j) => setReflections(j.reflections ?? [])); fetch("/api/prayers?room=1").then((r) => r.json()).then((j) => setPrayers(j.prayers ?? [])); }, []);
+  useEffect(() => { Promise.all([
+    fetch("/api/reflections?feed=1").then((r) => r.json()).then((j) => setReflections(j.reflections ?? [])),
+    fetch("/api/prayers?room=1").then((r) => r.json()).then((j) => setPrayers(j.prayers ?? [])),
+  ]).finally(() => setLoading(false)); }, []);
   async function react(type: "AMEN" | "PRAYING", id: string, kind: "reflection" | "prayer") {
     await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, [kind === "reflection" ? "reflectionId" : "prayerId"]: id }) });
   }
@@ -329,11 +334,12 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-          {tab === "reflections" && reflections.map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-flame", label: "Amen", count: p.amen, on: p.iReacted?.amen, onClick: () => react("AMEN", p.id, "reflection") }, { icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iReacted?.praying, onClick: () => react("PRAYING", p.id, "reflection") }]} />))}
-          {tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
+          {loading && [0, 1].map((i) => (<div key={i} className="skel" style={{ height: 92, borderRadius: 16, display: "block" }} />))}
+          {!loading && tab === "reflections" && reflections.map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-flame", label: "Amen", count: p.amen, on: p.iReacted?.amen, onClick: () => react("AMEN", p.id, "reflection") }, { icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iReacted?.praying, onClick: () => react("PRAYING", p.id, "reflection") }]} />))}
+          {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
           {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-hand-stop", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
-          {tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]} />))}
-          {tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
+          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]} />))}
+          {!loading && tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>
       </div>
     </div>
