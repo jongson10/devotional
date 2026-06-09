@@ -20,6 +20,22 @@ export async function getStreak(userId: string): Promise<StreakState> {
   if (s.lastDay && daysBetween(s.lastDay, today) > 1) streak = 0;
   return { streak, longest: Number(s.longest || 0), lastDay: s.lastDay || null, points: Number(s.points || 0), totalDays: Number(s.totalDays || 0) };
 }
+// Fetch many users' streak state in a single pipelined round-trip (avoids N+1 on the leaderboard).
+export async function getStreaksBatch(userIds: string[]): Promise<Record<string, StreakState>> {
+  const out: Record<string, StreakState> = {};
+  if (userIds.length === 0) return out;
+  const today = ymd(new Date());
+  const pipe = redis().pipeline();
+  for (const id of userIds) pipe.hgetall(stateKey(id));
+  const results = (await pipe.exec()) as (Record<string, string> | null)[];
+  userIds.forEach((id, i) => {
+    const s = results[i] || {};
+    let streak = Number(s.streak || 0);
+    if (s.lastDay && daysBetween(s.lastDay, today) > 1) streak = 0;
+    out[id] = { streak, longest: Number(s.longest || 0), lastDay: s.lastDay || null, points: Number(s.points || 0), totalDays: Number(s.totalDays || 0) };
+  });
+  return out;
+}
 export async function recordCompletion(userId: string, pointsEarned: number): Promise<StreakState> {
   const today = ymd(new Date());
   const cur = await getStreak(userId);

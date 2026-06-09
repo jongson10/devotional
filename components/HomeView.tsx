@@ -105,7 +105,7 @@ export default function HomeView({ name, churchName, seriesTitle, days, todayCar
 function Hero({ icon, value, label }: { icon: string; value: number | null; label: string }) {
   return (
     <div style={{ textAlign: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--accent)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}><i className={`ti ${icon}`} style={{ fontSize: 18 }} /> {value ?? "—"}</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--accent)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}><i className={`ti ${icon}`} style={{ fontSize: 18 }} /> {value === null ? <span className="skel" style={{ width: 20, height: 18, borderRadius: 5 }} /> : value}</div>
       <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
     </div>
   );

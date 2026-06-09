@@ -85,10 +85,18 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   }, [dayId]);
 
   if (err) return <div style={{ padding: 28, color: "var(--muted)", textAlign: "center", lineHeight: 1.6 }}>{err}</div>;
-  if (!data || stage === "loading") return <div style={{ padding: 28, color: "var(--muted)" }}>Loading…</div>;
+  if (!data || stage === "loading") return (
+    <div style={{ padding: "18px 18px" }} aria-busy="true" aria-label="Loading">
+      <div className="skel" style={{ width: 90, height: 11, marginBottom: 12 }} />
+      <div className="skel" style={{ width: "72%", height: 22, marginBottom: 28, display: "block" }} />
+      <div className="skel" style={{ width: 70, height: 11, marginBottom: 14 }} />
+      {["100%", "96%", "90%", "94%", "86%"].map((w, i) => (<div key={i} className="skel" style={{ width: w, height: 13, marginBottom: 9, display: "block" }} />))}
+    </div>
+  );
 
   const points = data.pointsReward;
   const accent = "var(--accent)";
+  const allReflectionsAnswered = data.reflectionQuestions.length > 0 && data.reflectionQuestions.every((_, i) => (reflectAnswers[i]?.length ?? 0) > 0);
 
   async function saveReflection(qIndex: number, body: string) {
     await fetch("/api/reflections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, questionIndex: qIndex, body }) });
@@ -234,7 +242,8 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
         {!revealed.passage && (<button className="btn-ghost btn-dock" onClick={revealPassage}><i className="ti ti-book-2" /> Read the passage</button>)}
         {revealed.passage && !revealed.lesson && (<button className="btn-ghost btn-dock" onClick={revealLesson}><i className="ti ti-arrow-down" /> Continue to lesson</button>)}
         {revealed.lesson && stage === "lesson" && (<button className="btn-ghost btn-dock" onClick={() => setStage("reflect")}><i className="ti ti-pencil" /> Reflect</button>)}
-        {stage === "reflect" && (<InputBar value={draft} setValue={setDraft} onSend={sendReflectAnswer} placeholder={`Reflection #${activeQ + 1}…`} />)}
+        {stage === "reflect" && allReflectionsAnswered && (<button className="btn-ghost btn-dock" onClick={() => { setStage("prayer"); setActiveQ(0); }}><i className="ti ti-arrow-down" /> Continue to journal &amp; prayer</button>)}
+        {stage === "reflect" && !allReflectionsAnswered && (<InputBar value={draft} setValue={setDraft} onSend={sendReflectAnswer} placeholder={`Reflection #${activeQ + 1}…`} />)}
         {stage === "prayer" && (<InputBar value={draft} setValue={setDraft} onSend={sendPrayer} placeholder="Write your prayer…" />)}
         {stage === "complete" && !showComplete && !alreadyDone && (<button className="btn-primary" style={{ maxWidth: 320 }} onClick={completeDay}><i className="ti ti-check" /> Complete day</button>)}
         {stage === "complete" && alreadyDone && (<button className="btn-ghost btn-dock" onClick={() => setShowFeed(true)}><i className="ti ti-users" /> See reflections</button>)}
