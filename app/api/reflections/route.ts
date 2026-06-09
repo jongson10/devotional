@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { reflectionsFeed } from "@/lib/feed";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const user = await requireUser();
@@ -18,19 +19,5 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const churchId = user.churchId;
-  if (!churchId) return NextResponse.json({ reflections: [] });
-  const rows = await prisma.reflection.findMany({
-    where: { shared: true, hidden: false, day: { series: { churchId } } },
-    orderBy: { createdAt: "desc" }, take: 80,
-    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { title: true, order: true } } },
-  });
-  const feed = rows.map((r: (typeof rows)[number]) => ({
-    id: r.id, body: r.body, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", isMine: r.userId === user.id,
-    dayTitle: r.day.title, dayOrder: r.day.order,
-    amen: r.reactions.filter((x: { type: string }) => x.type === "AMEN").length,
-    praying: r.reactions.filter((x: { type: string }) => x.type === "PRAYING").length,
-    iReacted: { amen: r.reactions.some((x: { type: string; userId: string }) => x.type === "AMEN" && x.userId === user.id), praying: r.reactions.some((x: { type: string; userId: string }) => x.type === "PRAYING" && x.userId === user.id) },
-  }));
-  return NextResponse.json({ reflections: feed });
+  return NextResponse.json({ reflections: await reflectionsFeed(user) });
 }

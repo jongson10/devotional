@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Row = { id: string; name: string; isMe: boolean; streak: number; stars: number; daysCompleted: number };
 type SortKey = "stars" | "streak" | "daysCompleted";
@@ -9,11 +9,9 @@ const SORTS: { key: SortKey; label: string; icon: string; unit: string }[] = [
   { key: "daysCompleted", label: "Days", icon: "ti-check", unit: "" },
 ];
 
-export default function Community({ churchName }: { churchName: string }) {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function Community({ churchName, initialRows = [] }: { churchName: string; initialRows?: Row[] }) {
+  const rows = initialRows;
   const [sort, setSort] = useState<SortKey>("stars");
-  useEffect(() => { fetch("/api/leaderboard").then((r) => r.json()).then((j) => { setRows(j.rows ?? []); setLoading(false); }); }, []);
   const sorted = [...rows].sort((a, b) => b[sort] - a[sort]);
   return (
     <div style={{ padding: "26px 18px" }}>
@@ -23,8 +21,7 @@ export default function Community({ churchName }: { churchName: string }) {
       <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 18 }}>
         {SORTS.map((s) => (<button key={s.key} onClick={() => setSort(s.key)} style={{ flex: 1, border: "none", background: sort === s.key ? "#fff" : "transparent", color: sort === s.key ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><i className={`ti ${s.icon}`} /> {s.label}</button>))}
       </div>
-      {loading && <div style={{ color: "var(--muted)" }}>Loading…</div>}
-      {!loading && sorted.length === 0 && <div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No one's on the board yet.</div>}
+      {sorted.length === 0 && <div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No one's on the board yet.</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sorted.map((r, i) => {
           const val = r[sort]; const unit = SORTS.find((s) => s.key === sort)!.unit;

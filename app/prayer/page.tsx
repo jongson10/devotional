@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { churchName } from "@/lib/church";
+import { prayerRoom } from "@/lib/feed";
 import PrayerRoom from "@/components/PrayerRoom";
 import TopBar from "@/components/TopBar";
 export const dynamic = "force-dynamic";
 export default async function PrayerPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
-  const name = await churchName(user.churchId);
-  return (<><TopBar isAdmin={user.role !== "MEMBER"} /><PrayerRoom churchName={name} /></>);
+  const [name, prayers] = await Promise.all([churchName(user.churchId), prayerRoom(user)]);
+  return (<><TopBar isAdmin={user.role !== "MEMBER"} /><PrayerRoom churchName={name} initial={prayers} /></>);
 }

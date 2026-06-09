@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
@@ -7,19 +7,15 @@ import { useTheme } from "./ThemeProvider";
 type DayStatus = "open" | "future" | "missed" | "always";
 type Day = { id: string; order: number; title: string; passageRef: string; pointsReward: number; done: boolean; lateDone: boolean; status: DayStatus; openable: boolean; unlocksOn: string | null; };
 
-export default function HomeView({ name, churchName, seriesTitle, days, todayCard }: { name: string; churchName: string; seriesTitle: string | null; days: Day[]; todayCard: Day | null; }) {
+export default function HomeView({ name, churchName, seriesTitle, days, todayCard, streak, points }: { name: string; churchName: string; seriesTitle: string | null; days: Day[]; todayCard: Day | null; streak: number; points: number; }) {
   const { resolved } = useTheme();
   const router = useRouter();
-  const [streak, setStreak] = useState<number | null>(null);
-  const [points, setPoints] = useState<number | null>(null);
   const [displayName, setDisplayName] = useState(name);
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const greeting = resolved === "dawn" ? "Good morning," : "Good evening,";
   const doneCount = days.filter((d) => d.done).length;
   const LATE = "#4F9D69";
-
-  useEffect(() => { fetch("/api/progress").then((r) => r.json()).then((s) => { setStreak(s.streak ?? 0); setPoints(s.points ?? 0); }).catch(() => { setStreak(0); setPoints(0); }); }, []);
 
   async function saveName() {
     const clean = draftName.trim();
@@ -102,10 +98,10 @@ export default function HomeView({ name, churchName, seriesTitle, days, todayCar
   );
 }
 
-function Hero({ icon, value, label }: { icon: string; value: number | null; label: string }) {
+function Hero({ icon, value, label }: { icon: string; value: number; label: string }) {
   return (
     <div style={{ textAlign: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--accent)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}><i className={`ti ${icon}`} style={{ fontSize: 18 }} /> {value === null ? <span className="skel" style={{ width: 20, height: 18, borderRadius: 5 }} /> : value}</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--accent)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}><i className={`ti ${icon}`} style={{ fontSize: 18 }} /> {value}</div>
       <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
     </div>
   );

@@ -1,16 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
-export default function PrayerRoom({ churchName }: { churchName: string }) {
-  const [prayers, setPrayers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { fetch("/api/prayers?room=1").then((r) => r.json()).then((j) => { setPrayers(j.prayers ?? []); setLoading(false); }); }, []);
+import { useState } from "react";
+export default function PrayerRoom({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
+  const prayers = initial;
   async function pray(id: string) { await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "PRAYING", prayerId: id }) }); }
   return (
     <div style={{ padding: "26px 18px" }}>
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 20 }}>Prayer room</h1>
-      {loading && <div style={{ color: "var(--muted)" }}>Loading…</div>}
-      {!loading && prayers.length === 0 && (<div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>The prayer room is quiet right now. When someone shares a prayer, it appears here.</div>)}
+      {prayers.length === 0 && (<div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>The prayer room is quiet right now. When someone shares a prayer, it appears here.</div>)}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {prayers.map((p) => {
           const initials = p.author === "Anonymous" ? "?" : p.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("");

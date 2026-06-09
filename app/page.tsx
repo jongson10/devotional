@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { streakState } from "@/lib/feed";
 import { dayStatus, unlockDate } from "@/lib/unlock";
 import HomeView from "@/components/HomeView";
 import TopBar from "@/components/TopBar";
@@ -11,9 +12,10 @@ export default async function HomePage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const [church, series] = await Promise.all([
+  const [church, series, streak] = await Promise.all([
     user.churchId ? prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : Promise.resolve(null),
     user.churchId ? prisma.series.findFirst({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve(null),
+    streakState(user.id),
   ]);
   const tz = church?.timezone || "UTC";
 
@@ -40,7 +42,7 @@ export default async function HomePage() {
   return (
     <>
       <TopBar isAdmin={isAdmin} />
-      <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesTitle={series?.title ?? null} days={days} todayCard={todayCard} />
+      <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesTitle={series?.title ?? null} days={days} todayCard={todayCard} streak={streak.streak} points={streak.points} />
     </>
   );
 }

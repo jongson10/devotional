@@ -1,16 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
-export default function ReflectionsFeed({ churchName }: { churchName: string }) {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { fetch("/api/reflections?feed=1").then((r) => r.json()).then((j) => { setItems(j.reflections ?? []); setLoading(false); }); }, []);
+import { useState } from "react";
+export default function ReflectionsFeed({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
+  const items = initial;
   async function react(type: "AMEN" | "PRAYING", id: string) { await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, reflectionId: id }) }); }
   return (
     <div style={{ padding: "26px 18px" }}>
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 20 }}>Reflections</h1>
-      {loading && <div style={{ color: "var(--muted)" }}>Loading…</div>}
-      {!loading && items.length === 0 && (<div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No reflections yet. As people work through the devotional, their reflections appear here.</div>)}
+      {items.length === 0 && (<div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No reflections yet. As people work through the devotional, their reflections appear here.</div>)}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {items.map((p) => {
           const initials = p.author === "Anonymous" ? "?" : p.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("");

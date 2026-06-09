@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { getStreak, recordCompletion, addPoints, rebuildStreakFromHistory } from "@/lib/streaks";
+import { getStreak, recordCompletion, addPoints } from "@/lib/streaks";
+import { streakState } from "@/lib/feed";
 import { isDayOpen, isOnTime } from "@/lib/unlock";
 export const dynamic = "force-dynamic";
 const STEP_WEIGHTS = [0.17, 0.33, 0.33, 0.17];
@@ -9,12 +10,7 @@ function starsForStep(step: number, total: number): number { let acc = 0; for (l
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let state = await getStreak(user.id);
-  if (state.totalDays === 0) {
-    const completions = await prisma.dayProgress.findMany({ where: { userId: user.id, completed: true }, select: { completedAt: true, pointsEarned: true } });
-    if (completions.length > 0) state = await rebuildStreakFromHistory(user.id, completions);
-  }
-  return NextResponse.json(state);
+  return NextResponse.json(await streakState(user.id));
 }
 export async function POST(req: NextRequest) {
   const user = await requireUser();

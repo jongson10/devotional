@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 type Row = { id: string; name: string; isMe: boolean; streak: number; stars: number; daysCompleted: number };
@@ -11,11 +11,9 @@ const SORTS: { key: SortKey; label: string; icon: string; unit: string }[] = [
   { key: "daysCompleted", label: "Days", icon: "ti-check", unit: "" },
 ];
 
-export default function Leaderboard() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function Leaderboard({ initialRows = [] }: { initialRows?: Row[] }) {
+  const rows = initialRows;
   const [sort, setSort] = useState<SortKey>("stars");
-  useEffect(() => { fetch("/api/leaderboard").then((r) => r.json()).then((j) => { setRows(j.rows ?? []); setLoading(false); }); }, []);
 
   const sorted = [...rows].sort((a, b) => b[sort] - a[sort]);
 
@@ -33,8 +31,7 @@ export default function Leaderboard() {
         ))}
       </div>
 
-      {loading && <div style={{ color: "var(--muted)" }}>Loading…</div>}
-      {!loading && sorted.length === 0 && <div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No one's on the board yet.</div>}
+      {sorted.length === 0 && <div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No one's on the board yet.</div>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sorted.map((r, i) => {

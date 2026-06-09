@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { prayerRoom } from "@/lib/feed";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const user = await requireUser();
@@ -17,14 +18,5 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const churchId = user.churchId;
-  if (!churchId) return NextResponse.json({ prayers: [] });
-  const rows = await prisma.prayer.findMany({ where: { shared: true, hidden: false, user: { churchId } }, orderBy: { createdAt: "desc" }, take: 80, include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } } } });
-  const room = rows.map((p: (typeof rows)[number]) => ({
-    id: p.id, body: p.body, author: p.anonymous ? "Anonymous" : p.user.name ?? "Someone", isMine: p.userId === user.id,
-    praying: p.reactions.filter((x: { type: string }) => x.type === "PRAYING").length,
-    iPrayed: p.reactions.some((x: { type: string; userId: string }) => x.type === "PRAYING" && x.userId === user.id),
-    createdAt: p.createdAt,
-  }));
-  return NextResponse.json({ prayers: room });
+  return NextResponse.json({ prayers: await prayerRoom(user) });
 }
