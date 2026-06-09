@@ -123,6 +123,15 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
     const v = editDraft.trim(); if (!v) { setEditingPrayer(false); return; }
     setPrayerText(v); savePrayer(v, prayerShare); setEditingPrayer(false); setEditDraft("");
   }
+  // Rewind the unfold sequence one step. View-only: saved reflections/prayer are kept.
+  function stepBackView() {
+    setShowComplete(false);
+    if (stage === "complete") setStage("prayer");
+    else if (stage === "prayer") setStage("reflect");
+    else if (stage === "reflect") setStage("lesson");
+    else if (stage === "lesson") { setRevealed({ passage: true, lesson: false }); setStage("passage"); }
+    else if (stage === "passage") { setRevealed({ passage: false, lesson: false }); setStage("intro"); }
+  }
 
   return (
     <div style={{ position: "relative", minHeight: "calc(100vh - 50px)" }}>
@@ -132,7 +141,7 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
             <div className="label">Day {data.order}{data.weekNumber ? ` · Week ${data.weekNumber}` : ""}</div>
             <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.15, marginTop: 5 }}>{data.title}</div>
           </div>
-          <ProgressDots stage={stage} />
+          <ProgressDots stage={stage} onStepBack={stepBackView} />
         </div>
 
         {alreadyDone && (
@@ -237,12 +246,16 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   );
 }
 
-function ProgressDots({ stage }: { stage: Stage }) {
+function ProgressDots({ stage, onStepBack }: { stage: Stage; onStepBack?: () => void }) {
   const order: Stage[] = ["passage", "lesson", "reflect", "prayer"];
   const idx = stage === "complete" ? 4 : stage === "intro" ? 0 : Math.max(0, order.indexOf(stage));
+  const canStepBack = stage !== "intro";
   return (
     <div style={{ display: "flex", gap: 6, paddingTop: 6 }}>
-      {[0, 1, 2, 3].map((n) => (<div key={n} style={{ width: 26, height: 3, borderRadius: 99, background: n <= idx ? "var(--accent)" : "var(--line)", transition: "background .3s" }} />))}
+      {[0, 1, 2, 3].map((n) => (
+        <button key={n} onClick={onStepBack} disabled={!canStepBack} aria-label="Step back one" title="Tap to step back one"
+          style={{ width: 26, height: 3, borderRadius: 99, background: n <= idx ? "var(--accent)" : "var(--line)", transition: "background .3s", border: "none", padding: 0, cursor: canStepBack ? "pointer" : "default" }} />
+      ))}
     </div>
   );
 }
