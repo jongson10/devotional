@@ -1,0 +1,220 @@
+// Devotional app data model — Postgres (Neon) + Redis for streaks.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(MEMBER)
+
+  churchId String?
+  church   Church? @relation(fields: [churchId], references: [id])
+
+  accounts     Account[]
+  sessions     Session[]
+  reflections  Reflection[]
+  prayers      Prayer[]
+  reactions    Reaction[]
+  dayProgress  DayProgress[]
+
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Church {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  prayerRoomEnabled     Boolean @default(true)
+  reflectionFeedEnabled Boolean @default(true)
+  gamificationEnabled   Boolean @default(true)
+  pointsLabel           String  @default("stars")
+
+  // IANA timezone used for day-locking / "today" (e.g. "America/Los_Angeles").
+  timezone  String  @default("America/Los_Angeles")
+
+  users  User[]
+  series Series[]
+
+  createdAt DateTime @default(now())
+}
+
+model Series {
+  id          String   @id @default(cuid())
+  churchId    String
+  church      Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  title       String
+  subtitle    String?
+  weekNumber  Int?
+  published   Boolean  @default(false)
+  preachedOn  DateTime?
+
+  startDate   DateTime?
+
+  days Day[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([churchId])
+}
+
+model Day {
+  id        String  @id @default(cuid())
+  seriesId  String
+  series    Series  @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  order     Int
+  title     String
+
+  passageRef  String
+  passageText String  @db.Text
+  passageRefsExtra String?
+  pastorNote  String? @db.Text
+
+  teaching    String  @db.Text
+
+  reflectionQuestions Json
+
+  prayerPrompt String? @db.Text
+
+  pointsReward Int @default(60)
+
+  reflections Reflection[]
+  prayers     Prayer[]
+  progress    DayProgress[]
+
+  @@unique([seriesId, order])
+  @@index([seriesId])
+}
+
+model Reflection {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayId     String
+  day       Day     @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  questionIndex Int
+  body      String  @db.Text
+
+  shared      Boolean @default(false)
+  anonymous   Boolean @default(false)
+  hidden      Boolean @default(false)
+
+  reactions Reaction[]
+
+  createdAt DateTime @default(now())
+
+  @@index([dayId, shared, hidden])
+  @@index([userId])
+}
+
+model Prayer {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayId     String?
+  day       Day?    @relation(fields: [dayId], references: [id])
+  body      String  @db.Text
+
+  shared      Boolean @default(false)
+  anonymous   Boolean @default(false)
+  hidden      Boolean @default(false)
+
+  reactions Reaction[]
+
+  createdAt DateTime @default(now())
+
+  @@index([shared, hidden])
+  @@index([userId])
+}
+
+model Reaction {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         ReactionType
+  reflectionId String?
+  reflection   Reflection? @relation(fields: [reflectionId], references: [id], onDelete: Cascade)
+  prayerId     String?
+  prayer       Prayer?     @relation(fields: [prayerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, type, reflectionId])
+  @@unique([userId, type, prayerId])
+}
+
+enum ReactionType {
+  AMEN
+  PRAYING
+}
+
+model DayProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayId       String
+  day         Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  // Furthest step reached (0=none,1=read,2=reflected,3=prayed,4=completed).
+  step        Int      @default(0)
+  completed   Boolean  @default(false)
+  // Was the day completed on its own scheduled day? false = done late (different color).
+  onTime      Boolean  @default(true)
+
+  completedAt  DateTime @default(now())
+  pointsEarned Int      @default(0)
+
+  @@unique([userId, dayId])
+  @@index([userId])
+}
