@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 export const dynamic = "force-dynamic";
-
 export async function POST(req: NextRequest) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -11,13 +10,11 @@ export async function POST(req: NextRequest) {
   const day = await prisma.day.findFirst({ where: { id: dayId, series: { churchId: user.churchId ?? "__none__" } }, select: { id: true } });
   if (!day) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const existing = await prisma.reflection.findFirst({ where: { userId: user.id, dayId, questionIndex } });
-  // Auto-share reflections to the church feed (shared: true). Prayers stay private.
   const saved = existing
     ? await prisma.reflection.update({ where: { id: existing.id }, data: { body: body.trim(), shared: true } })
     : await prisma.reflection.create({ data: { userId: user.id, dayId, questionIndex, body: body.trim(), shared: true } });
   return NextResponse.json({ reflection: saved });
 }
-
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

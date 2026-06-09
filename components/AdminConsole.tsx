@@ -82,10 +82,8 @@ function ContentManager() {
   const [series, setSeries] = useState<any[]>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [editingDay, setEditingDay] = useState<any | null>(null);
-
   function load() { fetch("/api/admin?view=series").then((r) => r.json()).then((j) => setSeries(j.series ?? [])); }
   useEffect(load, []);
-
   async function saveSeries(s: any) {
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSeries", ...s }) });
     setEditing(null); load();
@@ -98,18 +96,16 @@ function ContentManager() {
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveDay", ...d }) });
     setEditingDay(null); load();
   }
-
   if (editingDay) return <DayEditor day={editingDay} onSave={saveDay} onCancel={() => setEditingDay(null)} />;
-
   return (
     <div>
       <button className="btn-ghost" style={{ marginBottom: 16 }} onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "" })}><i className="ti ti-plus" /> New series</button>
       {editing && (
         <Card>
-          <Field label="Series title"><input style={inputStyle} value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="Take up your cross" /></Field>
-          <Field label="Subtitle / sermon date"><input style={inputStyle} value={editing.subtitle ?? ""} onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })} /></Field>
+          <Field label="Series title"><input style={inputStyle} value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="Broken Tools and Utter Victory" /></Field>
+          <Field label="Subtitle"><input style={inputStyle} value={editing.subtitle ?? ""} onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })} /></Field>
           <Field label="Week number"><input style={inputStyle} type="number" value={editing.weekNumber ?? ""} onChange={(e) => setEditing({ ...editing, weekNumber: Number(e.target.value) })} /></Field>
-          <Field label="Start date (Day 1 opens this day)" hint="Day N opens that many days later — and only on that day. Leave blank to open all days immediately.">
+          <Field label="Start date (Day 1 opens this day)" hint="Day N opens that many days later, only on that day. Blank = all days open immediately.">
             <input style={inputStyle} type="date" value={toDateInput(editing.startDate)} onChange={(e) => setEditing({ ...editing, startDate: e.target.value })} />
           </Field>
           <div style={{ display: "flex", gap: 8 }}>
@@ -155,11 +151,11 @@ function DayEditor({ day, onSave, onCancel }: { day: any; onSave: (d: any) => vo
         <Field label="Day number"><input style={inputStyle} type="number" value={d.order} onChange={(e) => set("order", Number(e.target.value))} /></Field>
         <Field label="Day title"><input style={inputStyle} value={d.title} onChange={(e) => set("title", e.target.value)} placeholder="Hiding in the winepress" /></Field>
         <Field label="Passage reference"><input style={inputStyle} value={d.passageRef} onChange={(e) => set("passageRef", e.target.value)} placeholder="Judges 6:11-16" /></Field>
-        <Field label="Passage text" hint="Leave blank to pull the ESV text automatically from this reference. Type text here only to override.">
+        <Field label="Passage text" hint="Leave blank to pull the ESV text automatically from this reference. Type here only to override.">
           <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} value={d.passageText ?? ""} onChange={(e) => set("passageText", e.target.value)} placeholder="(blank = auto ESV)" />
         </Field>
         <Field label="Supporting references (optional)"><input style={inputStyle} value={d.passageRefsExtra ?? ""} onChange={(e) => set("passageRefsExtra", e.target.value)} placeholder="Matthew 6:25-34" /></Field>
-        <Field label="Teaching (flowing prose)"><textarea style={{ ...inputStyle, minHeight: 130, resize: "vertical" }} value={d.teaching} onChange={(e) => set("teaching", e.target.value)} /></Field>
+        <Field label="Lesson" hint="The full lesson text shown after the passage."><textarea style={{ ...inputStyle, minHeight: 160, resize: "vertical" }} value={d.teaching} onChange={(e) => set("teaching", e.target.value)} /></Field>
         <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Reflection questions</span>
         {d.reflectionQuestions.map((q: string, i: number) => (
           <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>

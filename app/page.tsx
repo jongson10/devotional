@@ -11,15 +11,11 @@ export default async function HomePage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const church = user.churchId ? await prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true } }) : null;
+  const church = user.churchId ? await prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : null;
   const tz = church?.timezone || "UTC";
 
   const series = user.churchId
-    ? await prisma.series.findFirst({
-        where: { churchId: user.churchId, published: true },
-        orderBy: { createdAt: "desc" },
-        include: { days: { orderBy: { order: "asc" } } },
-      })
+    ? await prisma.series.findFirst({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } })
     : null;
 
   const progressRows = series
@@ -29,16 +25,14 @@ export default async function HomePage() {
   const isAdmin = user.role !== "MEMBER";
 
   const days = series?.days.map((d: { id: string; order: number; title: string; passageRef: string; pointsReward: number }) => {
-    const status = dayStatus(series.startDate, d.order, tz); // open | future | missed | always
+    const status = dayStatus(series.startDate, d.order, tz);
     const done = doneMap.has(d.id);
-    const lateDone = done && doneMap.get(d.id) === false; // completed late -> distinct color
+    const lateDone = done && doneMap.get(d.id) === false;
     const openable = isAdmin || status === "open" || status === "always" || status === "missed";
     const uOn = unlockDate(series.startDate, d.order, tz);
     return { id: d.id, order: d.order, title: d.title, passageRef: d.passageRef, pointsReward: d.pointsReward, done, lateDone, status, openable, unlocksOn: uOn ? uOn.toISOString() : null };
   }) ?? [];
 
-  // The "today" card always tracks the actual current/open day (even if already done),
-  // so it never jumps ahead to tomorrow. Fallbacks for no-lock or all-future series.
   const todayCard = days.find((d: (typeof days)[number]) => d.status === "open")
     ?? days.find((d: (typeof days)[number]) => d.status === "always" && !d.done)
     ?? days.find((d: (typeof days)[number]) => d.openable && !d.done)
@@ -47,12 +41,7 @@ export default async function HomePage() {
   return (
     <>
       <TopBar isAdmin={isAdmin} />
-      <HomeView
-        name={user.name ?? user.email?.split("@")[0] ?? "friend"}
-        seriesTitle={series?.title ?? null}
-        days={days}
-        todayCard={todayCard}
-      />
+      <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesTitle={series?.title ?? null} days={days} todayCard={todayCard} />
     </>
   );
 }

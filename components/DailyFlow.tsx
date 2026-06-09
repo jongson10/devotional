@@ -10,7 +10,7 @@ type DayData = {
   pointsReward: number; seriesTitle: string; weekNumber: number | null;
   esv?: boolean; esvCopyright?: string | null;
 };
-type Stage = "loading" | "teaching" | "passage" | "reflect" | "prayer" | "complete";
+type Stage = "loading" | "intro" | "passage" | "lesson" | "reflect" | "prayer" | "complete";
 
 async function recordStep(dayId: string, step: number) {
   try { await fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId, step }) }); } catch {}
@@ -33,7 +33,6 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   const router = useRouter();
   const [data, setData] = useState<DayData | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState<{ passage: boolean }>({ passage: false });
   const [stage, setStage] = useState<Stage>("loading");
   const [reflectAnswers, setReflectAnswers] = useState<Record<number, string[]>>({});
   const [activeQ, setActiveQ] = useState(0);
@@ -44,10 +43,12 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   const [showComplete, setShowComplete] = useState(false);
   const [showFeed, setShowFeed] = useState(false);
   const [alreadyDone, setAlreadyDone] = useState(false);
-  // editing saved entries
   const [editingRef, setEditingRef] = useState<{ q: number; j: number } | null>(null);
   const [editingPrayer, setEditingPrayer] = useState(false);
   const [editDraft, setEditDraft] = useState("");
+
+  // which sections are revealed (passage and lesson reveal one at a time)
+  const [revealed, setRevealed] = useState<{ passage: boolean; lesson: boolean }>({ passage: false, lesson: false });
 
   useEffect(() => {
     const url = dayId ? `/api/devotional?dayId=${dayId}` : null;
@@ -59,38 +60,22 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
       d.reflectionQuestions = Array.isArray(d.reflectionQuestions) ? d.reflectionQuestions : [];
       setData(d);
 
-      // ---- hydrate from saved progress so we resume where we left off ----
       const savedStep: number = j.progress?.step ?? 0;
       const completed: boolean = j.progress?.completed ?? false;
       const savedReflections: { questionIndex: number; body: string }[] = j.myReflections ?? [];
       const savedPrayer: { body: string; shared: boolean } | null = j.myPrayer ?? null;
 
-      // prefill reflection answers
-      if (savedReflections.length) {
-        const map: Record<number, string[]> = {};
-        for (const r of savedReflections) map[r.questionIndex] = [r.body];
-        setReflectAnswers(map);
-      }
+      if (savedReflections.length) { const map: Record<number, string[]> = {}; for (const r of savedReflections) map[r.questionIndex] = [r.body]; setReflectAnswers(map); }
       if (savedPrayer) { setPrayerText(savedPrayer.body); setPrayerShare(!!savedPrayer.shared); }
 
-      // passage was read once step >= 1
-      if (savedStep >= 1) setRevealed({ passage: true });
+      // hydrate reveal + stage from saved step
+      if (savedStep >= 1) setRevealed({ passage: true, lesson: true });
+      if (completed || savedStep >= 4) { setAlreadyDone(true); setStage("complete"); }
+      else if (savedStep === 3) setStage("complete");
+      else if (savedStep === 2) setStage("prayer");
+      else if (savedStep === 1) setStage("lesson");
+      else setStage("intro");
 
-      // place the user at the right stage
-      if (completed || savedStep >= 4) {
-        setAlreadyDone(true);
-        setStage("complete");
-      } else if (savedStep === 3) {
-        setStage("complete"); // prayer done, just needs the Complete tap
-      } else if (savedStep === 2) {
-        setStage("prayer");
-      } else if (savedStep === 1) {
-        // read but hasn't started reflecting -> let them go to reflect from passage
-        setStage("teaching");
-      } else {
-        setStage("teaching");
-      }
-      // resume reflection at first unanswered question
       const answered = new Set(savedReflections.map((r) => r.questionIndex));
       let firstUnanswered = 0;
       while (answered.has(firstUnanswered) && firstUnanswered < d.reflectionQuestions.length) firstUnanswered++;
@@ -103,6 +88,7 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   if (!data || stage === "loading") return <div style={{ padding: 28, color: "var(--muted)" }}>Loading…</div>;
 
   const points = data.pointsReward;
+  const accent = "var(--accent)";
 
   async function saveReflection(qIndex: number, body: string) {
     await fetch("/api/reflections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, questionIndex: qIndex, body }) });
@@ -110,7 +96,8 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   async function savePrayer(body: string, shared: boolean) {
     await fetch("/api/prayers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, body, shared, anonymous: false }) });
   }
-  function revealPassage() { setRevealed({ passage: true }); recordStep(data!.id, 1); }
+  function revealPassage() { setRevealed((p) => ({ ...p, passage: true })); setStage("passage"); }
+  function revealLesson() { setRevealed((p) => ({ ...p, lesson: true })); setStage("lesson"); recordStep(data!.id, 1); }
   async function completeDay() {
     const r = await fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, step: 4 }) });
     const j = await r.json(); setStreak(j.streak ?? 1); setShowComplete(true);
@@ -129,18 +116,13 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
   }
   function commitEditReflection(q: number, j: number) {
     const v = editDraft.trim(); if (!v) { setEditingRef(null); return; }
-    setReflectAnswers((prev) => {
-      const arr = [...(prev[q] ?? [])]; arr[j] = v; return { ...prev, [q]: arr };
-    });
-    saveReflection(q, v); // re-saves (auto-shared) — server updates the existing answer
-    setEditingRef(null); setEditDraft("");
+    setReflectAnswers((prev) => { const arr = [...(prev[q] ?? [])]; arr[j] = v; return { ...prev, [q]: arr }; });
+    saveReflection(q, v); setEditingRef(null); setEditDraft("");
   }
   function commitEditPrayer() {
     const v = editDraft.trim(); if (!v) { setEditingPrayer(false); return; }
     setPrayerText(v); savePrayer(v, prayerShare); setEditingPrayer(false); setEditDraft("");
   }
-
-  const accent = "var(--accent)";
 
   return (
     <div style={{ position: "relative", minHeight: "calc(100vh - 50px)" }}>
@@ -162,7 +144,7 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
         {!revealed.passage && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Today</div>
-            <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--body)" }}>Tap below to read today's passage, then walk through the lesson, reflection, and prayer.</div>
+            <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--body)" }}>Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer.</div>
           </section>
         )}
 
@@ -172,15 +154,12 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
             <PassageText text={data.passageText} />
             {data.passageRefsExtra && (<div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)" }}>Also: {data.passageRefsExtra}</div>)}
             {data.esv && data.esvCopyright && (
-              <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.5, color: "var(--muted)" }}>
-                {data.esvCopyright}{" "}
-                <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>esv.org</a>
-              </div>
+              <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.5, color: "var(--muted)" }}>{data.esvCopyright}{" "}<a href="https://www.esv.org" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>esv.org</a></div>
             )}
           </section>
         )}
 
-        {revealed.passage && (
+        {revealed.lesson && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Lesson</div>
             <div style={{ fontSize: 14, lineHeight: 1.65, color: "var(--body)", whiteSpace: "pre-line" }}>{data.teaching}</div>
@@ -199,9 +178,7 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
                     {(reflectAnswers[i] ?? []).map((a, j) => (
                       editingRef && editingRef.q === i && editingRef.j === j ? (
                         <div key={j} className="glass" style={{ borderRadius: 12, padding: "6px 6px 6px 12px", display: "flex", alignItems: "flex-end", gap: 6, marginTop: 6 }}>
-                          <textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEditReflection(i, j); } if (e.key === "Escape") setEditingRef(null); }}
-                            style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.5, padding: "6px 0", minHeight: 22 }} />
+                          <textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEditReflection(i, j); } if (e.key === "Escape") setEditingRef(null); }} style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.5, padding: "6px 0", minHeight: 22 }} />
                           <button onClick={() => commitEditReflection(i, j)} aria-label="Save" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><i className="ti ti-check" /></button>
                         </div>
                       ) : (
@@ -230,18 +207,13 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
             <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginBottom: 8 }}>{data.prayerPrompt ?? "Write a prayer in response to today."}</div>
             {prayerText && !editingPrayer && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>
-                  {prayerText}
-                  {prayerShare && (<div style={{ fontSize: 11, color: accent, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-users" /> Shared to prayer room</div>)}
-                </div>
+                <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>{prayerText}{prayerShare && (<div style={{ fontSize: 11, color: accent, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-users" /> Shared to prayer room</div>)}</div>
                 <button onClick={() => { setEditingPrayer(true); setEditDraft(prayerText); }} aria-label="Edit prayer" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-pencil" /></button>
               </div>
             )}
             {editingPrayer && (
               <div className="glass" style={{ borderRadius: 12, padding: "6px 6px 6px 12px", display: "flex", alignItems: "flex-end", gap: 6 }}>
-                <textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEditPrayer(); } if (e.key === "Escape") setEditingPrayer(false); }}
-                  style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.5, padding: "6px 0", minHeight: 22 }} />
+                <textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEditPrayer(); } if (e.key === "Escape") setEditingPrayer(false); }} style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.5, padding: "6px 0", minHeight: 22 }} />
                 <button onClick={commitEditPrayer} aria-label="Save prayer" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><i className="ti ti-check" /></button>
               </div>
             )}
@@ -250,8 +222,9 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
       </div>
 
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 8, maxWidth: 440, margin: "0 auto", padding: "12px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>
-        {stage === "teaching" && !revealed.passage && (<button className="btn-ghost btn-dock" onClick={revealPassage}><i className="ti ti-book-2" /> Read the passage</button>)}
-        {stage === "teaching" && revealed.passage && (<button className="btn-ghost btn-dock" onClick={() => setStage("reflect")}><i className="ti ti-pencil" /> Reflect</button>)}
+        {!revealed.passage && (<button className="btn-ghost btn-dock" onClick={revealPassage}><i className="ti ti-book-2" /> Read the passage</button>)}
+        {revealed.passage && !revealed.lesson && (<button className="btn-ghost btn-dock" onClick={revealLesson}><i className="ti ti-arrow-down" /> Continue to lesson</button>)}
+        {revealed.lesson && stage === "lesson" && (<button className="btn-ghost btn-dock" onClick={() => setStage("reflect")}><i className="ti ti-pencil" /> Reflect</button>)}
         {stage === "reflect" && (<InputBar value={draft} setValue={setDraft} onSend={sendReflectAnswer} placeholder={`Reflection #${activeQ + 1}…`} />)}
         {stage === "prayer" && (<InputBar value={draft} setValue={setDraft} onSend={sendPrayer} placeholder="Write your prayer…" />)}
         {stage === "complete" && !showComplete && !alreadyDone && (<button className="btn-primary" style={{ maxWidth: 320 }} onClick={completeDay}><i className="ti ti-check" /> Complete day</button>)}
@@ -265,8 +238,8 @@ export default function DailyFlow({ dayId }: { dayId: string | null }) {
 }
 
 function ProgressDots({ stage }: { stage: Stage }) {
-  const order: Stage[] = ["teaching", "passage", "reflect", "prayer"];
-  const idx = stage === "complete" ? 4 : Math.max(0, order.indexOf(stage));
+  const order: Stage[] = ["passage", "lesson", "reflect", "prayer"];
+  const idx = stage === "complete" ? 4 : stage === "intro" ? 0 : Math.max(0, order.indexOf(stage));
   return (
     <div style={{ display: "flex", gap: 6, paddingTop: 6 }}>
       {[0, 1, 2, 3].map((n) => (<div key={n} style={{ width: 26, height: 3, borderRadius: 99, background: n <= idx ? "var(--accent)" : "var(--line)", transition: "background .3s" }} />))}
@@ -280,25 +253,15 @@ function InputBar({ value, setValue, onSend, placeholder }: { value: string; set
   const hasText = value.trim().length > 0;
   return (
     <div className="glass" style={{ width: "100%", borderRadius: 24, padding: "6px 6px 6px 16px", display: "flex", alignItems: "flex-end", gap: 8 }}>
-      <textarea ref={ref} rows={1} value={value} placeholder={placeholder} onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
-        style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.45, padding: "8px 0", minHeight: 22, maxHeight: 140, overflowY: "auto" }} />
-      <button onClick={onSend} aria-label="Send" disabled={!hasText}
-        style={{ width: 36, height: 36, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", opacity: hasText ? 1 : 0.5, transition: "opacity .2s" }}>
-        <i className="ti ti-arrow-up" />
-      </button>
+      <textarea ref={ref} rows={1} value={value} placeholder={placeholder} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }} style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.45, padding: "8px 0", minHeight: 22, maxHeight: 140, overflowY: "auto" }} />
+      <button onClick={onSend} aria-label="Send" disabled={!hasText} style={{ width: 36, height: 36, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", opacity: hasText ? 1 : 0.5, transition: "opacity .2s" }}><i className="ti ti-arrow-up" /></button>
     </div>
   );
 }
 
 function CompleteOverlay({ streak, points, onSeeFeed }: { streak: number; points: number; onSeeFeed: () => void }) {
   const [phase, setPhase] = useState(0);
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 120);
-    const t2 = setTimeout(() => setPhase(2), 1100);
-    const t3 = setTimeout(() => setPhase(3), 1500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
+  useEffect(() => { const t1 = setTimeout(() => setPhase(1), 120); const t2 = setTimeout(() => setPhase(2), 1100); const t3 = setTimeout(() => setPhase(3), 1500); return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; }, []);
   return (
     <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--glassBg)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 20 }}>
       <div style={{ position: "relative" }}>
@@ -310,10 +273,7 @@ function CompleteOverlay({ streak, points, onSeeFeed }: { streak: number; points
       </div>
       <div style={{ textAlign: "center", marginTop: 18, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "none" : "translateY(8px)", transition: "all .5s" }}>
         <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>Day complete</div>
-        <div style={{ fontSize: 14, color: "var(--body)", marginTop: 5 }}>
-          <i className="ti ti-flame" style={{ color: "var(--accent)" }} /> {streak}-day streak ·{" "}
-          <i className="ti ti-star" style={{ color: "var(--accent)" }} /> +{points}
-        </div>
+        <div style={{ fontSize: 14, color: "var(--body)", marginTop: 5 }}><i className="ti ti-flame" style={{ color: "var(--accent)" }} /> {streak}-day streak · <i className="ti ti-star" style={{ color: "var(--accent)" }} /> +{points}</div>
       </div>
       <div style={{ position: "absolute", bottom: 24, left: 18, right: 18, opacity: phase >= 3 ? 1 : 0, transition: "opacity .5s", display: "flex", justifyContent: "center" }}>
         <button className="btn-primary" style={{ maxWidth: 320 }} onClick={onSeeFeed}>See how others reflected <i className="ti ti-chevron-up" /></button>
@@ -328,10 +288,7 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
   const [prayers, setPrayers] = useState<any[]>([]);
   const [shown, setShown] = useState(false);
   useEffect(() => { setTimeout(() => setShown(true), 20); }, []);
-  useEffect(() => {
-    fetch("/api/reflections?feed=1").then((r) => r.json()).then((j) => setReflections(j.reflections ?? []));
-    fetch("/api/prayers?room=1").then((r) => r.json()).then((j) => setPrayers(j.prayers ?? []));
-  }, []);
+  useEffect(() => { fetch("/api/reflections?feed=1").then((r) => r.json()).then((j) => setReflections(j.reflections ?? [])); fetch("/api/prayers?room=1").then((r) => r.json()).then((j) => setPrayers(j.prayers ?? [])); }, []);
   async function react(type: "AMEN" | "PRAYING", id: string, kind: "reflection" | "prayer") {
     await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, [kind === "reflection" ? "reflectionId" : "prayerId"]: id }) });
   }
@@ -342,31 +299,18 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
         <div style={{ padding: "14px 18px 8px" }}>
           <div style={{ width: 38, height: 4, borderRadius: 99, background: "var(--line)", margin: "0 auto 12px" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div className="label" style={{ display: "flex", alignItems: "center", gap: 5 }}><i className="ti ti-users" /> Your church</div>
+            <div className="label" style={{ display: "flex", alignItems: "center", gap: 5 }}><i className="ti ti-users" /> Community</div>
             <button onClick={onClose} style={{ width: 30, height: 30, border: "none", background: "var(--glassBg)", borderRadius: "50%", color: "var(--body)" }}><i className="ti ti-x" /></button>
           </div>
           <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4 }}>
-            {(["reflections", "prayers"] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "var(--glassBorder)" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9 }}>
-                {t === "reflections" ? "Reflections" : "Prayer room"}
-              </button>
-            ))}
+            {(["reflections", "prayers"] as const).map((t) => (<button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "var(--glassBorder)" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9 }}>{t === "reflections" ? "Reflections" : "Prayer room"}</button>))}
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-          {tab === "reflections" && reflections.map((p) => (
-            <PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine}
-              reactions={[
-                { icon: "ti-flame", label: "Amen", count: p.amen, on: p.iReacted?.amen, onClick: () => react("AMEN", p.id, "reflection") },
-                { icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iReacted?.praying, onClick: () => react("PRAYING", p.id, "reflection") },
-              ]} />
-          ))}
+          {tab === "reflections" && reflections.map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-flame", label: "Amen", count: p.amen, on: p.iReacted?.amen, onClick: () => react("AMEN", p.id, "reflection") }, { icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iReacted?.praying, onClick: () => react("PRAYING", p.id, "reflection") }]} />))}
           {tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
           {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-hand-stop", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
-          {tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (
-            <PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine}
-              reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]} />
-          ))}
+          {tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]} />))}
           {tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>
       </div>
@@ -392,13 +336,10 @@ function ReactBtn({ icon, label, count, on, onClick }: { icon: string; label: st
   const [active, setActive] = useState(!!on);
   const [c, setC] = useState(count);
   return (
-    <button onClick={() => { setActive(!active); setC(c + (active ? -1 : 1)); onClick(); }}
-      style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 11px", borderRadius: 99, border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`, background: active ? "var(--glassBg)" : "transparent", color: active ? "var(--accent)" : "var(--body)" }}>
+    <button onClick={() => { setActive(!active); setC(c + (active ? -1 : 1)); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 11px", borderRadius: 99, border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`, background: active ? "var(--glassBg)" : "transparent", color: active ? "var(--accent)" : "var(--body)" }}>
       <i className={`ti ${icon}`} /> {label} <span>{c}</span>
     </button>
   );
 }
 
-function Empty({ text }: { text: string }) {
-  return <div style={{ textAlign: "center", color: "var(--muted)", fontSize: 13, padding: "30px 0" }}>{text}</div>;
-}
+function Empty({ text }: { text: string }) { return <div style={{ textAlign: "center", color: "var(--muted)", fontSize: 13, padding: "30px 0" }}>{text}</div>; }

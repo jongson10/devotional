@@ -10,9 +10,7 @@ function redis(): Redis {
   return _redis;
 }
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
-function daysBetween(a: string, b: string) {
-  return Math.round((new Date(b+"T00:00:00Z").getTime() - new Date(a+"T00:00:00Z").getTime()) / 86400000);
-}
+function daysBetween(a: string, b: string) { return Math.round((new Date(b+"T00:00:00Z").getTime() - new Date(a+"T00:00:00Z").getTime()) / 86400000); }
 export type StreakState = { streak: number; longest: number; lastDay: string | null; points: number; totalDays: number; };
 const stateKey = (userId: string) => `streak:${userId}`;
 export async function getStreak(userId: string): Promise<StreakState> {

@@ -11,6 +11,7 @@ export default function TopBar({ isAdmin = false }: { isAdmin?: boolean }) {
         <Link href="/" className={is("/") ? "active" : ""}>Home</Link>
         <Link href="/reflections" className={is("/reflections") ? "active" : ""}>Reflections</Link>
         <Link href="/prayer" className={is("/prayer") ? "active" : ""}>Prayer</Link>
+        <Link href="/community" className={is("/community") ? "active" : ""}>Community</Link>
       </div>
       {isAdmin && (<Link href="/admin" aria-label="Admin" className="top-bar-gear"><i className="ti ti-settings" /></Link>)}
     </nav>

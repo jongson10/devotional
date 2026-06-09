@@ -9,7 +9,6 @@ export async function GET(req: NextRequest) {
   if (!admin || !admin.churchId) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const view = new URL(req.url).searchParams.get("view") ?? "series";
   const churchId = admin.churchId;
-
   if (view === "series") {
     const series = await prisma.series.findMany({ where: { churchId }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } });
     const church = await prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true } });
@@ -44,7 +43,6 @@ export async function POST(req: NextRequest) {
   if (!admin || !admin.churchId) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const churchId = admin.churchId;
   const data = await req.json();
-
   switch (data.action) {
     case "saveSettings": {
       const tz = String(data.timezone ?? "").trim();
@@ -66,11 +64,7 @@ export async function POST(req: NextRequest) {
       const { seriesId, id, order, title, passageRef, passageText, passageRefsExtra, pastorNote, teaching, reflectionQuestions, prayerPrompt, pointsReward } = data;
       const owns = await prisma.series.findFirst({ where: { id: seriesId, churchId } });
       if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-      const payload = {
-        seriesId, order: Number(order), title, passageRef, passageText: passageText ?? "",
-        passageRefsExtra: passageRefsExtra || null, pastorNote: pastorNote || null, teaching,
-        reflectionQuestions: reflectionQuestions ?? [], prayerPrompt: prayerPrompt || null, pointsReward: Number(pointsReward ?? 60),
-      };
+      const payload = { seriesId, order: Number(order), title, passageRef, passageText: passageText ?? "", passageRefsExtra: passageRefsExtra || null, pastorNote: pastorNote || null, teaching, reflectionQuestions: reflectionQuestions ?? [], prayerPrompt: prayerPrompt || null, pointsReward: Number(pointsReward ?? 60) };
       const day = id ? await prisma.day.update({ where: { id }, data: payload }) : await prisma.day.create({ data: payload });
       return NextResponse.json({ day });
     }
@@ -82,19 +76,11 @@ export async function POST(req: NextRequest) {
     }
     case "moderate": {
       const { kind, id, hidden } = data;
-      if (kind === "reflection") {
-        const r = await prisma.reflection.findFirst({ where: { id, day: { series: { churchId } } } });
-        if (!r) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-        await prisma.reflection.update({ where: { id }, data: { hidden: !!hidden } });
-      } else if (kind === "prayer") {
-        const p = await prisma.prayer.findFirst({ where: { id, user: { churchId } } });
-        if (!p) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-        await prisma.prayer.update({ where: { id }, data: { hidden: !!hidden } });
-      }
+      if (kind === "reflection") { const r = await prisma.reflection.findFirst({ where: { id, day: { series: { churchId } } } }); if (!r) return NextResponse.json({ error: "forbidden" }, { status: 403 }); await prisma.reflection.update({ where: { id }, data: { hidden: !!hidden } }); }
+      else if (kind === "prayer") { const p = await prisma.prayer.findFirst({ where: { id, user: { churchId } } }); if (!p) return NextResponse.json({ error: "forbidden" }, { status: 403 }); await prisma.prayer.update({ where: { id }, data: { hidden: !!hidden } }); }
       return NextResponse.json({ ok: true });
     }
-    default:
-      return NextResponse.json({ error: "unknown action" }, { status: 400 });
+    default: return NextResponse.json({ error: "unknown action" }, { status: 400 });
   }
 }
 
@@ -102,8 +88,7 @@ export async function DELETE(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin || !admin.churchId) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type");
-  const id = searchParams.get("id");
+  const type = searchParams.get("type"); const id = searchParams.get("id");
   if (type === "day" && id) {
     const day = await prisma.day.findFirst({ where: { id, series: { churchId: admin.churchId } } });
     if (!day) return NextResponse.json({ error: "forbidden" }, { status: 403 });
