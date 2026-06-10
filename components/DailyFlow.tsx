@@ -10,7 +10,7 @@ type DayData = {
   pastorNote: string | null; teaching: string;
   reflectionQuestions: string[]; prayerPrompt: string | null;
   pointsReward: number; seriesTitle: string; weekNumber: number | null;
-  esv?: boolean; esvCopyright?: string | null;
+  esv?: boolean; esvCopyright?: string | null; intro?: string | null;
 };
 type Stage = "loading" | "intro" | "passage" | "lesson" | "reflect" | "prayer" | "complete";
 
@@ -174,7 +174,7 @@ export default function DailyFlow({ initial }: { initial: Initial }) {
         {!revealed.passage && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Today</div>
-            <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--body)" }}>Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer.</div>
+            <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--body)", whiteSpace: "pre-line" }}>{data.intro || "Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer."}</div>
           </section>
         )}
 

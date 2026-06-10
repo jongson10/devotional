@@ -52,16 +52,23 @@ export async function POST(req: NextRequest) {
       const tz = String(data.timezone ?? "").trim();
       try { new Intl.DateTimeFormat("en-CA", { timeZone: tz }); } catch { return NextResponse.json({ error: "invalid timezone" }, { status: 400 }); }
       const name = String(data.name ?? "").trim().slice(0, 80);
-      const church = await prisma.church.update({ where: { id: churchId }, data: { timezone: tz, ...(name ? { name } : {}) } });
-      return NextResponse.json({ church: { name: church.name, timezone: church.timezone } });
+      const upd: any = { timezone: tz, ...(name ? { name } : {}) };
+      if (typeof data.reflectionFeedEnabled === "boolean") upd.reflectionFeedEnabled = data.reflectionFeedEnabled;
+      if (typeof data.prayerRoomEnabled === "boolean") upd.prayerRoomEnabled = data.prayerRoomEnabled;
+      if (typeof data.gamificationEnabled === "boolean") upd.gamificationEnabled = data.gamificationEnabled;
+      if (typeof data.introText === "string") upd.introText = data.introText.trim().slice(0, 600) || null;
+      await prisma.church.update({ where: { id: churchId }, data: upd });
+      return NextResponse.json({ ok: true });
     }
     case "saveSeries": {
       const { id, title, subtitle, weekNumber, startDate } = data;
       if (id) { const owns = await prisma.series.findFirst({ where: { id, churchId } }); if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 }); }
       const start = startDate ? new Date(startDate) : null;
+      const introText = typeof data.introText === "string" ? (data.introText.trim().slice(0, 600) || null) : null;
+      const payload: any = { title, subtitle, weekNumber, startDate: start, introText };
       const series = id
-        ? await prisma.series.update({ where: { id }, data: { title, subtitle, weekNumber, startDate: start } })
-        : await prisma.series.create({ data: { churchId, title, subtitle, weekNumber, startDate: start } });
+        ? await prisma.series.update({ where: { id }, data: payload })
+        : await prisma.series.create({ data: { churchId, ...payload } });
       return NextResponse.json({ series });
     }
     case "saveDay": {

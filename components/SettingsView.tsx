@@ -27,19 +27,48 @@ export default function SettingsView({ name, email, bio, image, isAdmin }: { nam
     setBusy(false); setSaved(true); setTimeout(() => setSaved(false), 2200); router.refresh();
   }
 
+  function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const im = new window.Image();
+      im.onload = () => {
+        const S = 256;
+        const c = document.createElement("canvas"); c.width = S; c.height = S;
+        const ctx = c.getContext("2d"); if (!ctx) return;
+        const scale = Math.max(S / im.width, S / im.height);
+        const w = im.width * scale, h = im.height * scale;
+        ctx.drawImage(im, (S - w) / 2, (S - h) / 2, w, h);
+        setImg(c.toDataURL("image/jpeg", 0.78));
+      };
+      im.src = String(reader.result);
+    };
+    reader.readAsDataURL(f);
+  }
+
   return (
     <div style={{ padding: "26px 18px", maxWidth: 480, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 20 }}>Settings</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}>Settings</h1>
+        {isAdmin && <Link href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 500, color: "var(--accent)" }}><i className="ti ti-settings-cog" /> Admin</Link>}
+      </div>
 
       <div className="glass" style={{ borderRadius: 14, padding: 16, marginBottom: 14 }}>
         <div className="label" style={{ marginBottom: 12 }}>Profile</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <Avatar name={n || "?"} image={img} size={52} />
-          <label style={{ flex: 1 }}>
-            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Photo URL</span>
-            <input style={inputStyle} value={img} onChange={(e) => setImg(e.target.value)} placeholder="https://… (link to an image)" />
-          </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+          <Avatar name={n || "?"} image={img} size={56} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, color: "var(--accent)", cursor: "pointer" }}>
+              <i className="ti ti-camera" /> Upload photo
+              <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
+            </label>
+            {img && <button onClick={() => setImg("")} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, padding: 0, textAlign: "left" }}>Remove photo</button>}
+          </div>
         </div>
+        <label style={{ display: "block", marginBottom: 12 }}>
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>…or paste an image URL</span>
+          <input style={inputStyle} value={img.startsWith("data:") ? "" : img} onChange={(e) => setImg(e.target.value)} placeholder="https://… (link to an image)" />
+        </label>
         <label style={{ display: "block", marginBottom: 12 }}>
           <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Name</span>
           <input style={inputStyle} value={n} onChange={(e) => setN(e.target.value)} placeholder="Your name" />
@@ -66,13 +95,6 @@ export default function SettingsView({ name, email, bio, image, isAdmin }: { nam
           ))}
         </div>
       </div>
-
-      {isAdmin && (
-        <Link href="/admin" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "1px solid var(--line)", color: "var(--ink)", fontSize: 14, fontWeight: 500 }}>
-          <span><i className="ti ti-settings-cog" style={{ color: "var(--accent)", marginRight: 8 }} />Manage devotions</span>
-          <i className="ti ti-chevron-right" style={{ color: "var(--muted)" }} />
-        </Link>
-      )}
     </div>
   );
 }

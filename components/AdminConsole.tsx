@@ -22,13 +22,16 @@ const TIMEZONES = [
   "Europe/London", "Europe/Paris", "Asia/Seoul", "Asia/Tokyo", "Australia/Sydney",
 ];
 
-export default function AdminConsole({ initialSeries = [], initialChurch = null }: { initialSeries?: any[]; initialChurch?: { name: string; timezone: string } | null }) {
+export default function AdminConsole({ initialSeries = [], initialChurch = null }: { initialSeries?: any[]; initialChurch?: any }) {
   const [tab, setTab] = useState<Tab>("content");
   return (
     <div style={{ padding: "20px 18px", maxWidth: 720, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <h1 style={{ fontSize: 22, fontWeight: 600 }}>Admin</h1>
-        <Link href="/" style={{ fontSize: 13, color: "var(--accent)" }}>Back to app <i className="ti ti-arrow-right" /></Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Link href="/settings" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--accent)" }}><i className="ti ti-settings" /> Settings</Link>
+          <Link href="/" style={{ fontSize: 13, color: "var(--accent)" }}>Back to app <i className="ti ti-arrow-right" /></Link>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 20 }}>
         {(["content", "members", "activity", "moderation", "settings"] as Tab[]).map((t) => (
@@ -65,13 +68,28 @@ function toDateInput(v: any): string {
   return d.toISOString().slice(0, 10);
 }
 
-function Settings({ initialChurch = null }: { initialChurch?: { name: string; timezone: string } | null }) {
+function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button onClick={() => onChange(!on)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", padding: "9px 0" }}>
+      <span style={{ fontSize: 14, color: "var(--ink)" }}>{label}</span>
+      <span style={{ width: 42, height: 24, borderRadius: 99, background: on ? "var(--accent)" : "var(--line)", position: "relative", transition: "background .2s", flex: "none" }}>
+        <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+      </span>
+    </button>
+  );
+}
+
+function Settings({ initialChurch = null }: { initialChurch?: any }) {
   const [tz, setTz] = useState<string>(initialChurch?.timezone ?? "America/Los_Angeles");
   const [name, setName] = useState<string>(initialChurch?.name ?? "");
+  const [intro, setIntro] = useState<string>(initialChurch?.introText ?? "");
+  const [refl, setRefl] = useState<boolean>(initialChurch?.reflectionFeedEnabled ?? true);
+  const [pray, setPray] = useState<boolean>(initialChurch?.prayerRoomEnabled ?? true);
+  const [comm, setComm] = useState<boolean>(initialChurch?.gamificationEnabled ?? true);
   const [saved, setSaved] = useState(false);
   async function save() {
     setSaved(false);
-    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name }) });
+    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name, introText: intro, reflectionFeedEnabled: refl, prayerRoomEnabled: pray, gamificationEnabled: comm }) });
     setSaved(true); setTimeout(() => setSaved(false), 2500);
   }
   return (
@@ -84,7 +102,14 @@ function Settings({ initialChurch = null }: { initialChurch?: { name: string; ti
           {TIMEZONES.map((z) => <option key={z} value={z}>{z}</option>)}
         </select>
       </Field>
-      <button className="btn-primary" onClick={save}>Save settings</button>
+      <Field label="Welcome intro (global)" hint="Shown before today's passage. Leave blank for the default; a series can override it.">
+        <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer." />
+      </Field>
+      <span className="label" style={{ display: "block", marginTop: 6, marginBottom: 2 }}>Tabs members can see</span>
+      <Toggle label="Reflections" on={refl} onChange={setRefl} />
+      <Toggle label="Prayer" on={pray} onChange={setPray} />
+      <Toggle label="Community" on={comm} onChange={setComm} />
+      <button className="btn-primary" style={{ marginTop: 12 }} onClick={save}>Save settings</button>
       {saved && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8, textAlign: "center" }}>Saved.</div>}
     </Card>
   );
@@ -123,7 +148,7 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button className="btn-ghost" onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "" })}><i className="ti ti-plus" /> New series</button>
+        <button className="btn-ghost" onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "", introText: "" })}><i className="ti ti-plus" /> New series</button>
         <button className="btn-ghost" onClick={() => setImporting(true)}><i className="ti ti-file-import" /> Import</button>
       </div>
       {series.map((s) => (
@@ -134,7 +159,7 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
               <div style={{ fontSize: 12, color: "var(--muted)" }}>{s.days.length} days · {s.published ? "Published" : "Draft"}{s.startDate ? ` · starts ${toDateInput(s.startDate)}` : " · no date lock"}</div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => setEditing({ id: s.id, title: s.title, subtitle: s.subtitle, weekNumber: s.weekNumber, startDate: toDateInput(s.startDate) })} style={iconBtn}><i className="ti ti-edit" /></button>
+              <button onClick={() => setEditing({ id: s.id, title: s.title, subtitle: s.subtitle, weekNumber: s.weekNumber, startDate: toDateInput(s.startDate), introText: s.introText ?? "" })} style={iconBtn}><i className="ti ti-edit" /></button>
               <button onClick={() => publish(s.id, !s.published)} style={{ ...iconBtn, color: s.published ? "var(--accent)" : "var(--muted)" }}><i className={`ti ${s.published ? "ti-eye" : "ti-eye-off"}`} /></button>
               <button onClick={() => deleteSeries(s.id, s.title)} style={{ ...iconBtn, color: "#b4452f" }} aria-label="Delete series"><i className="ti ti-trash" /></button>
             </div>
@@ -199,6 +224,9 @@ function SeriesEditor({ editing, onChange, onSave, onCancel }: { editing: any; o
         <Field label="Week number"><input style={inputStyle} type="number" value={editing.weekNumber ?? ""} onChange={(e) => onChange({ ...editing, weekNumber: Number(e.target.value) })} /></Field>
         <Field label="Start date (Day 1 opens this day)" hint="Day N opens that many days later, only on that day. Blank = all days open immediately.">
           <input style={inputStyle} type="date" value={toDateInput(editing.startDate)} onChange={(e) => onChange({ ...editing, startDate: e.target.value })} />
+        </Field>
+        <Field label="Welcome intro override (optional)" hint="Overrides the church-wide intro for this series. Blank = use the global one.">
+          <textarea style={{ ...inputStyle, minHeight: 64, resize: "vertical" }} value={editing.introText ?? ""} onChange={(e) => onChange({ ...editing, introText: e.target.value })} placeholder="Leave blank to use the global intro" />
         </Field>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn-primary" style={{ flex: 1 }} onClick={() => onSave(editing)}>Save series</button>

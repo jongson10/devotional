@@ -146,9 +146,16 @@ export async function adminSeriesView(user: FeedUser) {
   const churchId = user.churchId;
   const [series, church] = await Promise.all([
     prisma.series.findMany({ where: { churchId }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }),
-    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true } }),
+    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true, reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true, introText: true } as any }),
   ]);
   return { series, church };
+}
+
+// Which feature tabs are enabled for the church (drives the nav).
+export async function navConfig(user: FeedUser): Promise<{ reflections: boolean; prayer: boolean; community: boolean }> {
+  if (!user.churchId) return { reflections: true, prayer: true, community: true };
+  const c: any = await prisma.church.findUnique({ where: { id: user.churchId }, select: { reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true } });
+  return { reflections: c?.reflectionFeedEnabled ?? true, prayer: c?.prayerRoomEnabled ?? true, community: c?.gamificationEnabled ?? true };
 }
 
 // Full payload for one day of the devotional flow: the day content (with ESV fallback),
@@ -158,7 +165,7 @@ export type DevotionalUser = { id: string; churchId: string | null; role: "MEMBE
 
 export async function devotionalPayload(user: DevotionalUser, dayId: string | null) {
   if (!dayId) return { error: "bad request", status: 400 as const };
-  const day = await prisma.day.findFirst({ where: { id: dayId }, include: { series: { select: { id: true, title: true, weekNumber: true, churchId: true, published: true, startDate: true, church: { select: { timezone: true, name: true } } } } } });
+  const day: any = await prisma.day.findFirst({ where: { id: dayId }, include: { series: { select: { id: true, title: true, weekNumber: true, churchId: true, published: true, startDate: true, introText: true, church: { select: { timezone: true, name: true, introText: true } } } } } as any });
   if (!day) return { error: "not found", status: 404 as const };
   if (day.series.churchId !== user.churchId) return { error: "forbidden", status: 403 as const };
   if (!day.series.published && user.role === "MEMBER") return { error: "not published", status: 403 as const };
@@ -172,12 +179,13 @@ export async function devotionalPayload(user: DevotionalUser, dayId: string | nu
     prisma.reflection.findMany({ where: { userId: user.id, dayId: day.id }, orderBy: { questionIndex: "asc" } }),
     prisma.prayer.findFirst({ where: { userId: user.id, dayId: day.id }, orderBy: { createdAt: "desc" } }),
   ]);
+  const intro = (day.series.introText || day.series.church?.introText || null) as string | null;
   return {
     day: {
       id: day.id, order: day.order, title: day.title, passageRef: day.passageRef, passageText,
       passageRefsExtra: day.passageRefsExtra, pastorNote: day.pastorNote, teaching: day.teaching,
       reflectionQuestions: day.reflectionQuestions, prayerPrompt: day.prayerPrompt, pointsReward: day.pointsReward,
-      seriesTitle: day.series.title, weekNumber: day.series.weekNumber, esv, esvCopyright: esv ? ESV_COPYRIGHT : null,
+      seriesTitle: day.series.title, weekNumber: day.series.weekNumber, esv, esvCopyright: esv ? ESV_COPYRIGHT : null, intro,
     },
     progress: { step: progress?.step ?? 0, completed: progress?.completed ?? false },
     myReflections: myReflections.map((r) => ({ questionIndex: r.questionIndex, body: r.body })),

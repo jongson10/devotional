@@ -76,6 +76,7 @@ model Church {
   gamificationEnabled   Boolean @default(true)
   pointsLabel           String  @default("stars")
   timezone  String  @default("America/Los_Angeles")
+  introText String? @db.Text
   users  User[]
   series Series[]
   createdAt DateTime @default(now())
@@ -91,6 +92,7 @@ model Series {
   published   Boolean  @default(false)
   preachedOn  DateTime?
   startDate   DateTime?
+  introText   String?  @db.Text
   days Day[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
