@@ -24,6 +24,7 @@ model User {
   reactions    Reaction[]
   dayProgress  DayProgress[]
   createdAt DateTime @default(now())
+  lastSeenAt DateTime?
 }
 
 enum Role {

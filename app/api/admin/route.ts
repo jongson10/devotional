@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { adminSeriesView } from "@/lib/feed";
+import { adminSeriesView, memberActivity } from "@/lib/feed";
 
 export const dynamic = "force-dynamic";
 
@@ -13,19 +13,23 @@ export async function GET(req: NextRequest) {
   if (view === "series") {
     return NextResponse.json(await adminSeriesView(admin));
   }
+  if (view === "members") {
+    return NextResponse.json({ members: await memberActivity(admin) });
+  }
   if (view === "activity") {
-    const [members, completions, sharedReflections, sharedPrayers] = await Promise.all([
+    const [members, completions, sharedReflections, sharedPrayers, activeUsers] = await Promise.all([
       prisma.user.count({ where: { churchId } }),
       prisma.dayProgress.count({ where: { user: { churchId }, completed: true } }),
       prisma.reflection.count({ where: { shared: true, hidden: false, day: { series: { churchId } } } }),
       prisma.prayer.count({ where: { shared: true, hidden: false, user: { churchId } } }),
+      memberActivity(admin),
     ]);
     const since = new Date(Date.now() - 6 * 86400000);
     const recent = await prisma.dayProgress.findMany({ where: { user: { churchId }, completed: true, completedAt: { gte: since } }, select: { completedAt: true } });
     const trend: Record<string, number> = {};
     for (let i = 0; i < 7; i++) { const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().slice(0, 10); trend[d] = 0; }
     recent.forEach((r: { completedAt: Date }) => { const d = r.completedAt.toISOString().slice(0, 10); if (d in trend) trend[d]++; });
-    return NextResponse.json({ members, completions, sharedReflections, sharedPrayers, trend });
+    return NextResponse.json({ members, completions, sharedReflections, sharedPrayers, trend, activeUsers });
   }
   if (view === "moderation") {
     const [reflections, prayers] = await Promise.all([
@@ -77,6 +81,24 @@ export async function POST(req: NextRequest) {
       const { kind, id, hidden } = data;
       if (kind === "reflection") { const r = await prisma.reflection.findFirst({ where: { id, day: { series: { churchId } } } }); if (!r) return NextResponse.json({ error: "forbidden" }, { status: 403 }); await prisma.reflection.update({ where: { id }, data: { hidden: !!hidden } }); }
       else if (kind === "prayer") { const p = await prisma.prayer.findFirst({ where: { id, user: { churchId } } }); if (!p) return NextResponse.json({ error: "forbidden" }, { status: 403 }); await prisma.prayer.update({ where: { id }, data: { hidden: !!hidden } }); }
+      return NextResponse.json({ ok: true });
+    }
+    case "setRole": {
+      const { userId, role } = data;
+      if (!userId || (role !== "MEMBER" && role !== "ADMIN")) return NextResponse.json({ error: "bad request" }, { status: 400 });
+      const target = await prisma.user.findFirst({ where: { id: userId, churchId }, select: { id: true, role: true } });
+      if (!target) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      if (target.role === "OWNER") return NextResponse.json({ error: "cannot change the owner" }, { status: 403 });
+      await prisma.user.update({ where: { id: userId }, data: { role } });
+      return NextResponse.json({ ok: true });
+    }
+    case "removeMember": {
+      const { userId } = data;
+      if (!userId || userId === admin.id) return NextResponse.json({ error: "bad request" }, { status: 400 });
+      const target = await prisma.user.findFirst({ where: { id: userId, churchId }, select: { id: true, role: true } });
+      if (!target) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      if (target.role === "OWNER") return NextResponse.json({ error: "cannot remove the owner" }, { status: 403 });
+      await prisma.user.delete({ where: { id: userId } });
       return NextResponse.json({ ok: true });
     }
     default: return NextResponse.json({ error: "unknown action" }, { status: 400 });

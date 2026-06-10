@@ -9,21 +9,28 @@ export default function ReflectionsFeed({ churchName, initial = [] }: { churchNa
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 20 }}>Reflections</h1>
       {items.length === 0 && (<div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No reflections yet. As people work through the devotional, their reflections appear here.</div>)}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {items.map((p) => {
-          const initials = p.author === "Anonymous" ? "?" : p.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("");
+        {items.map((g) => {
+          const initials = g.author === "Anonymous" ? "?" : g.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("");
           return (
-            <div key={p.id} className="rise" style={{ background: "var(--glassBg)", border: `1px solid ${p.isMine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+            <div key={g.key} className="rise" style={{ background: "var(--glassBg)", border: `1px solid ${g.isMine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{initials}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
-                  {p.dayTitle && <div style={{ fontSize: 11, color: "var(--muted)" }}>Day {p.dayOrder} · {p.dayTitle}</div>}
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{g.author}{g.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+                  {g.seriesTitle && <div style={{ fontSize: 11, color: "var(--muted)" }}>{g.seriesTitle}</div>}
                 </div>
               </div>
-              <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 12 }}>{p.body}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <FeedReact icon="ti-flame" label="Amen" count={p.amen} on={p.iReacted?.amen} onClick={() => react("AMEN", p.id)} />
-                <FeedReact icon="ti-hand-stop" label="Praying" count={p.praying} on={p.iReacted?.praying} onClick={() => react("PRAYING", p.id)} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {g.items.map((it: any) => (
+                  <div key={it.id}>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Day {it.dayOrder} · {it.dayTitle}</div>
+                    <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 8 }}>{it.body}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <FeedReact icon="ti-flame" label="Amen" count={it.amen} on={it.iReacted?.amen} onClick={() => react("AMEN", it.id)} />
+                      <FeedReact icon="ti-hand-stop" label="Praying" count={it.praying} on={it.iReacted?.praying} onClick={() => react("PRAYING", it.id)} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           );

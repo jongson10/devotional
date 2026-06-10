@@ -2,7 +2,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-type Tab = "content" | "activity" | "moderation" | "settings";
+type Tab = "content" | "members" | "activity" | "moderation" | "settings";
+
+function fmtAgo(iso: string | null): string {
+  if (!iso) return "never";
+  const diff = Date.now() - Date.parse(iso);
+  const m = Math.floor(diff / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (d < 30) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 const TIMEZONES = [
   "America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York",
@@ -19,11 +30,12 @@ export default function AdminConsole({ initialSeries = [], initialChurch = null 
         <Link href="/" style={{ fontSize: 13, color: "var(--accent)" }}>Back to app <i className="ti ti-arrow-right" /></Link>
       </div>
       <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 20 }}>
-        {(["content", "activity", "moderation", "settings"] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "#fff" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 12, fontWeight: 500, padding: 9, borderRadius: 9, textTransform: "capitalize" }}>{t}</button>
+        {(["content", "members", "activity", "moderation", "settings"] as Tab[]).map((t) => (
+          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "#fff" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 12, fontWeight: 500, padding: "9px 4px", borderRadius: 9, textTransform: "capitalize" }}>{t}</button>
         ))}
       </div>
       {tab === "content" && <ContentManager initialSeries={initialSeries} />}
+      {tab === "members" && <Members />}
       {tab === "activity" && <Activity />}
       {tab === "moderation" && <Moderation />}
       {tab === "settings" && <Settings initialChurch={initialChurch} />}
@@ -181,6 +193,47 @@ function DayEditor({ day, onSave, onCancel }: { day: any; onSave: (d: any) => vo
   );
 }
 
+function Members() {
+  const [members, setMembers] = useState<any[] | null>(null);
+  function load() { fetch("/api/admin?view=members").then((r) => r.json()).then((j) => setMembers(j.members ?? [])); }
+  useEffect(load, []);
+  async function setRole(userId: string, role: string) {
+    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setRole", userId, role }) });
+    load();
+  }
+  async function remove(userId: string, name: string) {
+    if (!confirm(`Remove ${name}? This permanently deletes their account along with their reflections, prayers, and progress. This can't be undone.`)) return;
+    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "removeMember", userId }) });
+    load();
+  }
+  if (!members) return <div style={{ color: "var(--muted)" }}>Loading…</div>;
+  return (
+    <div>
+      <div className="label" style={{ marginBottom: 10 }}>{members.length} member{members.length === 1 ? "" : "s"}</div>
+      {members.map((m) => (
+        <div key={m.id} style={{ background: "var(--glassBg)", border: "1px solid var(--line)", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{m.name}{m.isMe && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Active {fmtAgo(m.lastActiveAt)} · {m.daysCompleted} days</div>
+          </div>
+          {m.role === "OWNER" ? (
+            <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600, flex: "none" }}>Owner</span>
+          ) : (
+            <>
+              <select value={m.role} onChange={(e) => setRole(m.id, e.target.value)} disabled={m.isMe} style={{ ...inputStyle, width: "auto", padding: "6px 8px", fontSize: 13, flex: "none", opacity: m.isMe ? 0.5 : 1 }}>
+                <option value="MEMBER">Member</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+              <button onClick={() => remove(m.id, m.name)} disabled={m.isMe} style={{ ...iconBtn, flex: "none", color: m.isMe ? "var(--muted)" : "#b4452f", opacity: m.isMe ? 0.4 : 1 }} aria-label="Remove member"><i className="ti ti-trash" /></button>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Activity() {
   const [data, setData] = useState<any | null>(null);
   useEffect(() => { fetch("/api/admin?view=activity").then((r) => r.json()).then(setData); }, []);
@@ -207,6 +260,22 @@ function Activity() {
             </div>
           ))}
         </div>
+      </Card>
+      <Card>
+        <div className="label" style={{ marginBottom: 4 }}>Most recently active</div>
+        {(data.activeUsers ?? []).map((u: any) => (
+          <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{u.name}{u.isMe && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>{u.daysCompleted} days completed</div>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "right", flex: "none" }}>
+              <div>visited {fmtAgo(u.lastSeenAt)}</div>
+              <div>finished {fmtAgo(u.lastCompletedAt)}</div>
+            </div>
+          </div>
+        ))}
+        {(!data.activeUsers || data.activeUsers.length === 0) && <div style={{ fontSize: 13, color: "var(--muted)", paddingTop: 6 }}>No members yet.</div>}
       </Card>
     </div>
   );

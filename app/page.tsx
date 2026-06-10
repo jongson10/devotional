@@ -14,9 +14,11 @@ export default async function HomePage() {
 
   const [church, allSeries, streak] = await Promise.all([
     user.churchId ? prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : Promise.resolve(null),
-    user.churchId ? prisma.series.findMany({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve([]),
+    user.churchId ? prisma.series.findMany({ where: { churchId: user.churchId, published: true }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve([]),
     streakState(user.id),
   ]);
+  // Record this visit (best-effort; lastSeenAt drives the "last active" lists).
+  prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } as any }).catch(() => {});
   const tz = church?.timezone || "UTC";
   const isAdmin = user.role !== "MEMBER";
 
@@ -35,7 +37,8 @@ export default async function HomePage() {
       const uOn = unlockDate(series.startDate, d.order);
       return { id: d.id, order: d.order, title: d.title, passageRef: d.passageRef, pointsReward: d.pointsReward, done, lateDone, status, openable, unlocksOn: uOn ? uOn.toISOString() : null };
     });
-    const todayCard = days.find((d) => d.status === "open") ?? days.find((d) => d.status === "always" && !d.done) ?? days.find((d) => d.openable && !d.done) ?? null;
+    // Only a genuinely-open day counts as "today" — a past, fully-elapsed series gets no today card.
+    const todayCard = days.find((d) => d.status === "open") ?? days.find((d) => d.status === "always" && !d.done) ?? null;
     return { id: series.id, title: series.title, subtitle: series.subtitle, weekNumber: series.weekNumber, days, todayCardId: todayCard?.id ?? null };
   });
 

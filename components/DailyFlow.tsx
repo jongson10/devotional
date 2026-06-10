@@ -346,7 +346,29 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           {loading && [0, 1].map((i) => (<div key={i} className="skel" style={{ height: 92, borderRadius: 16, display: "block" }} />))}
-          {!loading && tab === "reflections" && reflections.map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-flame", label: "Amen", count: p.amen, on: p.iReacted?.amen, onClick: () => react("AMEN", p.id, "reflection") }, { icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iReacted?.praying, onClick: () => react("PRAYING", p.id, "reflection") }]} />))}
+          {!loading && tab === "reflections" && reflections.map((g: any) => (
+            <div key={g.key} style={{ background: "var(--glassBg)", border: `1px solid ${g.isMine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{g.author === "Anonymous" ? "?" : g.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("")}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{g.author}{g.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+                  {g.seriesTitle && <div style={{ fontSize: 11, color: "var(--muted)" }}>{g.seriesTitle}</div>}
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {g.items.map((it: any) => (
+                  <div key={it.id}>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Day {it.dayOrder} · {it.dayTitle}</div>
+                    <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 8 }}>{it.body}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <ReactBtn icon="ti-flame" label="Amen" count={it.amen} on={it.iReacted?.amen} onClick={() => react("AMEN", it.id, "reflection")} />
+                      <ReactBtn icon="ti-hand-stop" label="Praying" count={it.praying} on={it.iReacted?.praying} onClick={() => react("PRAYING", it.id, "reflection")} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
           {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-hand-stop", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
           {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]} />))}

@@ -9,20 +9,35 @@ import { isDayOpen } from "@/lib/unlock";
 
 export type FeedUser = { id: string; churchId: string | null };
 
+// One card per person per series: a member's shared reflections for a series are
+// grouped together, each reflection keeping its own day label and reactions.
 export async function reflectionsFeed(user: FeedUser) {
   if (!user.churchId) return [];
   const rows = await prisma.reflection.findMany({
     where: { shared: true, hidden: false, day: { series: { churchId: user.churchId } } },
-    orderBy: { createdAt: "desc" }, take: 80,
-    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { title: true, order: true } } },
+    orderBy: { createdAt: "desc" }, take: 200,
+    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { title: true, order: true, series: { select: { id: true, title: true } } } } },
   });
-  return rows.map((r) => ({
-    id: r.id, body: r.body, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", isMine: r.userId === user.id,
-    dayTitle: r.day.title, dayOrder: r.day.order,
-    amen: r.reactions.filter((x) => x.type === "AMEN").length,
-    praying: r.reactions.filter((x) => x.type === "PRAYING").length,
-    iReacted: { amen: r.reactions.some((x) => x.type === "AMEN" && x.userId === user.id), praying: r.reactions.some((x) => x.type === "PRAYING" && x.userId === user.id) },
-  }));
+  type Item = { id: string; dayTitle: string; dayOrder: number; questionIndex: number; body: string; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean } };
+  type Group = { key: string; author: string; isMine: boolean; seriesTitle: string; items: Item[] };
+  const groups = new Map<string, Group>();
+  for (const r of rows) {
+    const key = `${r.userId}::${r.day.series.id}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", isMine: r.userId === user.id, seriesTitle: r.day.series.title, items: [] };
+      groups.set(key, g);
+    }
+    g.items.push({
+      id: r.id, dayTitle: r.day.title, dayOrder: r.day.order, questionIndex: r.questionIndex, body: r.body,
+      amen: r.reactions.filter((x) => x.type === "AMEN").length,
+      praying: r.reactions.filter((x) => x.type === "PRAYING").length,
+      iReacted: { amen: r.reactions.some((x) => x.type === "AMEN" && x.userId === user.id), praying: r.reactions.some((x) => x.type === "PRAYING" && x.userId === user.id) },
+    });
+  }
+  const out = Array.from(groups.values());
+  out.forEach((g) => g.items.sort((a, b) => a.dayOrder - b.dayOrder || a.questionIndex - b.questionIndex));
+  return out;
 }
 
 export async function prayerRoom(user: FeedUser) {
@@ -69,13 +84,45 @@ export async function streakState(userId: string): Promise<StreakState> {
   return state;
 }
 
+// Per-member activity for a church: role, last visit (lastSeenAt), last completion,
+// and a combined lastActiveAt. Drives the Members admin, the Activity list, and
+// Community's "last active". Sorted most-recently-active first.
+export type MemberActivity = { id: string; name: string; email: string; role: "MEMBER" | "ADMIN" | "OWNER"; lastSeenAt: string | null; lastCompletedAt: string | null; lastActiveAt: string | null; daysCompleted: number; isMe: boolean };
+
+export async function memberActivity(user: FeedUser): Promise<MemberActivity[]> {
+  if (!user.churchId) return [];
+  const churchId = user.churchId;
+  const [members, lastDone] = await Promise.all([
+    // lastSeenAt cast: Prisma client types regenerate on db push / build.
+    prisma.user.findMany({ where: { churchId }, select: { id: true, name: true, email: true, role: true, lastSeenAt: true } as any }),
+    prisma.dayProgress.groupBy({ by: ["userId"], where: { user: { churchId }, completed: true }, _max: { completedAt: true }, _count: { _all: true } }),
+  ]);
+  const doneMap = new Map(lastDone.map((d) => [d.userId, { last: d._max.completedAt as Date | null, count: d._count._all }]));
+  const rows: MemberActivity[] = (members as any[]).map((m) => {
+    const d = doneMap.get(m.id);
+    const display = (m.name && m.name.trim()) ? m.name.trim() : (m.email ? m.email.split("@")[0] : "Member");
+    const seenT = m.lastSeenAt ? new Date(m.lastSeenAt).getTime() : 0;
+    const doneT = d?.last ? new Date(d.last).getTime() : 0;
+    const lastActive = Math.max(seenT, doneT);
+    return {
+      id: m.id, name: display, email: m.email, role: m.role,
+      lastSeenAt: m.lastSeenAt ? new Date(m.lastSeenAt).toISOString() : null,
+      lastCompletedAt: d?.last ? new Date(d.last).toISOString() : null,
+      lastActiveAt: lastActive ? new Date(lastActive).toISOString() : null,
+      daysCompleted: d?.count ?? 0, isMe: m.id === user.id,
+    };
+  });
+  rows.sort((a, b) => (b.lastActiveAt ? Date.parse(b.lastActiveAt) : 0) - (a.lastActiveAt ? Date.parse(a.lastActiveAt) : 0));
+  return rows;
+}
+
 // Admin content tab: all of a church's series (with days) plus church settings.
 // Shared by the admin API route and the admin page's initial server render.
 export async function adminSeriesView(user: FeedUser) {
   if (!user.churchId) return { series: [], church: null };
   const churchId = user.churchId;
   const [series, church] = await Promise.all([
-    prisma.series.findMany({ where: { churchId }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }),
+    prisma.series.findMany({ where: { churchId }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }),
     prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true } }),
   ]);
   return { series, church };

@@ -9,7 +9,18 @@ const SORTS: { key: SortKey; label: string; icon: string; unit: string }[] = [
   { key: "daysCompleted", label: "Days", icon: "ti-check", unit: "" },
 ];
 
-export default function Community({ churchName, initialRows = [] }: { churchName: string; initialRows?: Row[] }) {
+function fmtAgo(iso: string | null): string {
+  if (!iso) return "not yet";
+  const diff = Date.now() - Date.parse(iso);
+  const m = Math.floor(diff / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (d < 30) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export default function Community({ churchName, initialRows = [], initialActivity = [] }: { churchName: string; initialRows?: Row[]; initialActivity?: any[] }) {
   const rows = initialRows;
   const [sort, setSort] = useState<SortKey>("stars");
   const sorted = [...rows].sort((a, b) => b[sort] - a[sort]);
@@ -35,6 +46,21 @@ export default function Community({ churchName, initialRows = [] }: { churchName
           );
         })}
       </div>
+
+      {initialActivity.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <div className="label" style={{ marginBottom: 12 }}>Last active</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {initialActivity.map((u) => (
+              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 12, background: u.isMe ? "var(--glassBg)" : "transparent", border: `1px solid ${u.isMe ? "var(--accent)" : "transparent"}` }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, flex: "none" }}>{u.name.slice(0, 1).toUpperCase()}</div>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: u.isMe ? 600 : 500 }}>{u.name}{u.isMe && <span style={{ color: "var(--accent)", fontWeight: 400, fontSize: 12 }}> · you</span>}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{fmtAgo(u.lastActiveAt)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
