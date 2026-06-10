@@ -69,6 +69,18 @@ export async function streakState(userId: string): Promise<StreakState> {
   return state;
 }
 
+// Admin content tab: all of a church's series (with days) plus church settings.
+// Shared by the admin API route and the admin page's initial server render.
+export async function adminSeriesView(user: FeedUser) {
+  if (!user.churchId) return { series: [], church: null };
+  const churchId = user.churchId;
+  const [series, church] = await Promise.all([
+    prisma.series.findMany({ where: { churchId }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }),
+    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true } }),
+  ]);
+  return { series, church };
+}
+
 // Full payload for one day of the devotional flow: the day content (with ESV fallback),
 // the user's saved progress, reflections, and prayer. Shared by the API route and the
 // /today server page so the page can render without a second client round-trip.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { adminSeriesView } from "@/lib/feed";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +11,7 @@ export async function GET(req: NextRequest) {
   const view = new URL(req.url).searchParams.get("view") ?? "series";
   const churchId = admin.churchId;
   if (view === "series") {
-    const series = await prisma.series.findMany({ where: { churchId }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } });
-    const church = await prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true } });
-    return NextResponse.json({ series, church });
+    return NextResponse.json(await adminSeriesView(admin));
   }
   if (view === "activity") {
     const [members, completions, sharedReflections, sharedPrayers] = await Promise.all([

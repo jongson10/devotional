@@ -10,7 +10,7 @@ const TIMEZONES = [
   "Europe/London", "Europe/Paris", "Asia/Seoul", "Asia/Tokyo", "Australia/Sydney",
 ];
 
-export default function AdminConsole() {
+export default function AdminConsole({ initialSeries = [], initialChurch = null }: { initialSeries?: any[]; initialChurch?: { name: string; timezone: string } | null }) {
   const [tab, setTab] = useState<Tab>("content");
   return (
     <div style={{ padding: "20px 18px", maxWidth: 720, margin: "0 auto" }}>
@@ -23,10 +23,10 @@ export default function AdminConsole() {
           <button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "#fff" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 12, fontWeight: 500, padding: 9, borderRadius: 9, textTransform: "capitalize" }}>{t}</button>
         ))}
       </div>
-      {tab === "content" && <ContentManager />}
+      {tab === "content" && <ContentManager initialSeries={initialSeries} />}
       {tab === "activity" && <Activity />}
       {tab === "moderation" && <Moderation />}
-      {tab === "settings" && <Settings />}
+      {tab === "settings" && <Settings initialChurch={initialChurch} />}
     </div>
   );
 }
@@ -52,11 +52,10 @@ function toDateInput(v: any): string {
   return d.toISOString().slice(0, 10);
 }
 
-function Settings() {
-  const [tz, setTz] = useState<string>("");
-  const [name, setName] = useState<string>("");
+function Settings({ initialChurch = null }: { initialChurch?: { name: string; timezone: string } | null }) {
+  const [tz, setTz] = useState<string>(initialChurch?.timezone ?? "America/Los_Angeles");
+  const [name, setName] = useState<string>(initialChurch?.name ?? "");
   const [saved, setSaved] = useState(false);
-  useEffect(() => { fetch("/api/admin?view=series").then((r) => r.json()).then((j) => { setTz(j.church?.timezone ?? "America/Los_Angeles"); setName(j.church?.name ?? ""); }); }, []);
   async function save() {
     setSaved(false);
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name }) });
@@ -78,12 +77,11 @@ function Settings() {
   );
 }
 
-function ContentManager() {
-  const [series, setSeries] = useState<any[]>([]);
+function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
+  const [series, setSeries] = useState<any[]>(initialSeries);
   const [editing, setEditing] = useState<any | null>(null);
   const [editingDay, setEditingDay] = useState<any | null>(null);
   function load() { fetch("/api/admin?view=series").then((r) => r.json()).then((j) => setSeries(j.series ?? [])); }
-  useEffect(load, []);
   async function saveSeries(s: any) {
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSeries", ...s }) });
     setEditing(null); load();
