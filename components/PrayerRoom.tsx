@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Thread from "./Thread";
 export default function PrayerRoom({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
   const prayers = initial;
   async function pray(id: string) { await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "PRAYING", prayerId: id }) }); }
@@ -19,6 +20,7 @@ export default function PrayerRoom({ churchName, initial = [] }: { churchName: s
               </div>
               <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 12 }}>{p.body}</div>
               <PrayBtn count={p.praying} on={p.iPrayed} onClick={() => pray(p.id)} />
+              <Thread comments={p.comments} target={{ prayerId: p.id }} />
             </div>
           );
         })}

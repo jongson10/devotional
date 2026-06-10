@@ -23,6 +23,7 @@ model User {
   prayers      Prayer[]
   reactions    Reaction[]
   dayProgress  DayProgress[]
+  comments     Comment[]
   createdAt DateTime @default(now())
   lastSeenAt DateTime?
 }
@@ -128,6 +129,7 @@ model Reflection {
   anonymous   Boolean @default(false)
   hidden      Boolean @default(false)
   reactions Reaction[]
+  comments  Comment[]
   createdAt DateTime @default(now())
   @@index([dayId, shared, hidden])
   @@index([userId])
@@ -144,9 +146,30 @@ model Prayer {
   anonymous   Boolean @default(false)
   hidden      Boolean @default(false)
   reactions Reaction[]
+  comments  Comment[]
   createdAt DateTime @default(now())
   @@index([shared, hidden])
   @@index([userId])
+}
+
+model Comment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body         String   @db.Text
+  reflectionId String?
+  reflection   Reflection? @relation(fields: [reflectionId], references: [id], onDelete: Cascade)
+  prayerId     String?
+  prayer       Prayer?  @relation(fields: [prayerId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Comment[] @relation("CommentReplies")
+  reactions    Reaction[]
+  hidden       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  @@index([reflectionId])
+  @@index([prayerId])
+  @@index([parentId])
 }
 
 model Reaction {
@@ -158,9 +181,12 @@ model Reaction {
   reflection   Reflection? @relation(fields: [reflectionId], references: [id], onDelete: Cascade)
   prayerId     String?
   prayer       Prayer?     @relation(fields: [prayerId], references: [id], onDelete: Cascade)
+  commentId    String?
+  comment      Comment?    @relation(fields: [commentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   @@unique([userId, type, reflectionId])
   @@unique([userId, type, prayerId])
+  @@unique([userId, type, commentId])
 }
 
 enum ReactionType {

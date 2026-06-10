@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Thread from "./Thread";
 
 type DayData = {
   id: string; order: number; title: string;
@@ -364,6 +365,7 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
                       <ReactBtn icon="ti-flame" label="Amen" count={it.amen} on={it.iReacted?.amen} onClick={() => react("AMEN", it.id, "reflection")} />
                       <ReactBtn icon="ti-hand-stop" label="Praying" count={it.praying} on={it.iReacted?.praying} onClick={() => react("PRAYING", it.id, "reflection")} />
                     </div>
+                    <Thread comments={it.comments} target={{ reflectionId: it.id }} />
                   </div>
                 ))}
               </div>
@@ -371,7 +373,7 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
           ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
           {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-hand-stop", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
-          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]} />))}
+          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]}><Thread comments={p.comments} target={{ prayerId: p.id }} /></PostCard>))}
           {!loading && tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>
       </div>
@@ -379,7 +381,7 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
   );
 }
 
-function PostCard({ author, body, mine, note, reactions }: { author: string; body: string; mine?: boolean; note?: string; reactions: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }[]; }) {
+function PostCard({ author, body, mine, note, reactions, children }: { author: string; body: string; mine?: boolean; note?: string; reactions: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }[]; children?: React.ReactNode; }) {
   const initials = author === "Anonymous" ? "?" : author.split(" ").map((s) => s[0]).slice(0, 2).join("");
   return (
     <div style={{ background: "var(--glassBg)", border: `1px solid ${mine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
@@ -389,6 +391,7 @@ function PostCard({ author, body, mine, note, reactions }: { author: string; bod
       </div>
       <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 12 }}>{body}</div>
       <div style={{ display: "flex", gap: 8 }}>{reactions.map((r) => <ReactBtn key={r.label} {...r} />)}</div>
+      {children}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Thread from "./Thread";
 export default function ReflectionsFeed({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
   const items = initial;
   async function react(type: "AMEN" | "PRAYING", id: string) { await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, reflectionId: id }) }); }
@@ -29,6 +30,7 @@ export default function ReflectionsFeed({ churchName, initial = [] }: { churchNa
                       <FeedReact icon="ti-flame" label="Amen" count={it.amen} on={it.iReacted?.amen} onClick={() => react("AMEN", it.id)} />
                       <FeedReact icon="ti-hand-stop" label="Praying" count={it.praying} on={it.iReacted?.praying} onClick={() => react("PRAYING", it.id)} />
                     </div>
+                    <Thread comments={it.comments} target={{ reflectionId: it.id }} />
                   </div>
                 ))}
               </div>
