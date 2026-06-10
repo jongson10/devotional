@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getStreak, getStreaksBatch, rebuildStreakFromHistory, type StreakState } from "@/lib/streaks";
+import { fetchEsvPassage, ESV_COPYRIGHT } from "@/lib/esv";
+import { isDayOpen } from "@/lib/unlock";
 
 // Shared read queries used by BOTH the API routes and the server pages, so the two
 // can never drift. Pages call these directly (no extra HTTP round-trip); the API
@@ -65,4 +67,38 @@ export async function streakState(userId: string): Promise<StreakState> {
     if (completions.length > 0) state = await rebuildStreakFromHistory(userId, completions);
   }
   return state;
+}
+
+// Full payload for one day of the devotional flow: the day content (with ESV fallback),
+// the user's saved progress, reflections, and prayer. Shared by the API route and the
+// /today server page so the page can render without a second client round-trip.
+export type DevotionalUser = { id: string; churchId: string | null; role: "MEMBER" | "ADMIN" | "OWNER" };
+
+export async function devotionalPayload(user: DevotionalUser, dayId: string | null) {
+  if (!dayId) return { error: "bad request", status: 400 as const };
+  const day = await prisma.day.findFirst({ where: { id: dayId }, include: { series: { select: { id: true, title: true, weekNumber: true, churchId: true, published: true, startDate: true, church: { select: { timezone: true, name: true } } } } } });
+  if (!day) return { error: "not found", status: 404 as const };
+  if (day.series.churchId !== user.churchId) return { error: "forbidden", status: 403 as const };
+  if (!day.series.published && user.role === "MEMBER") return { error: "not published", status: 403 as const };
+  const tz = day.series.church?.timezone || "UTC";
+  if (user.role === "MEMBER" && !isDayOpen(day.series.startDate, day.order, tz)) return { error: "locked", status: 403 as const };
+  let passageText = day.passageText?.trim() || "";
+  let esv = false;
+  if (!passageText) { const fetched = await fetchEsvPassage(day.passageRef); if (fetched) { passageText = fetched; esv = true; } }
+  const [progress, myReflections, myPrayer] = await Promise.all([
+    prisma.dayProgress.findUnique({ where: { userId_dayId: { userId: user.id, dayId: day.id } } }),
+    prisma.reflection.findMany({ where: { userId: user.id, dayId: day.id }, orderBy: { questionIndex: "asc" } }),
+    prisma.prayer.findFirst({ where: { userId: user.id, dayId: day.id }, orderBy: { createdAt: "desc" } }),
+  ]);
+  return {
+    day: {
+      id: day.id, order: day.order, title: day.title, passageRef: day.passageRef, passageText,
+      passageRefsExtra: day.passageRefsExtra, pastorNote: day.pastorNote, teaching: day.teaching,
+      reflectionQuestions: day.reflectionQuestions, prayerPrompt: day.prayerPrompt, pointsReward: day.pointsReward,
+      seriesTitle: day.series.title, weekNumber: day.series.weekNumber, esv, esvCopyright: esv ? ESV_COPYRIGHT : null,
+    },
+    progress: { step: progress?.step ?? 0, completed: progress?.completed ?? false },
+    myReflections: myReflections.map((r) => ({ questionIndex: r.questionIndex, body: r.body })),
+    myPrayer: myPrayer ? { body: myPrayer.body, shared: myPrayer.shared } : null,
+  };
 }

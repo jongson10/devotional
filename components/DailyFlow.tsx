@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type DayData = {
@@ -29,60 +29,71 @@ function PassageText({ text }: { text: string }) {
   );
 }
 
-export default function DailyFlow({ dayId }: { dayId: string | null }) {
+type Initial =
+  | { error: string; status?: number }
+  | { day: any; progress: { step: number; completed: boolean }; myReflections: { questionIndex: number; body: string }[]; myPrayer: { body: string; shared: boolean } | null };
+
+type DerivedState = {
+  err: string | null; data?: DayData; reflectAnswers?: Record<number, string[]>;
+  prayerText?: string | null; prayerShare?: boolean; revealed?: { passage: boolean; lesson: boolean };
+  stage?: Stage; activeQ?: number; alreadyDone?: boolean;
+};
+
+// Compute the full initial view state from the server-provided payload (no fetch).
+function deriveInitialState(initial: Initial): DerivedState {
+  const j: any = initial;
+  if (!j) return { err: "Could not load." };
+  if (j.error === "locked") return { err: "This day isn't open. Each day's devotional can only be done on its own day." };
+  if (j.error) return { err: j.error === "bad request" ? "No day selected." : j.error };
+  const d = j.day as DayData;
+  d.reflectionQuestions = Array.isArray(d.reflectionQuestions) ? d.reflectionQuestions : [];
+
+  const savedStep: number = j.progress?.step ?? 0;
+  const completed: boolean = j.progress?.completed ?? false;
+  const savedReflections: { questionIndex: number; body: string }[] = j.myReflections ?? [];
+  const savedPrayer: { body: string; shared: boolean } | null = j.myPrayer ?? null;
+
+  const reflectAnswers: Record<number, string[]> = {};
+  for (const r of savedReflections) reflectAnswers[r.questionIndex] = [r.body];
+  const revealed = savedStep >= 1 ? { passage: true, lesson: true } : { passage: false, lesson: false };
+
+  let stage: Stage; let alreadyDone = false;
+  if (completed || savedStep >= 4) { alreadyDone = true; stage = "complete"; }
+  else if (savedStep === 3) stage = "complete";
+  else if (savedStep === 2) stage = "prayer";
+  else if (savedStep === 1) stage = "lesson";
+  else stage = "intro";
+
+  const answered = new Set(savedReflections.map((r) => r.questionIndex));
+  let firstUnanswered = 0;
+  while (answered.has(firstUnanswered) && firstUnanswered < d.reflectionQuestions.length) firstUnanswered++;
+  const activeQ = Math.min(firstUnanswered, Math.max(0, d.reflectionQuestions.length - 1));
+  if (savedStep === 1 && answered.size > 0 && answered.size < d.reflectionQuestions.length) stage = "reflect";
+
+  return { err: null, data: d, reflectAnswers, prayerText: savedPrayer?.body ?? null, prayerShare: !!savedPrayer?.shared, revealed, stage, activeQ, alreadyDone };
+}
+
+export default function DailyFlow({ initial }: { initial: Initial }) {
   const router = useRouter();
-  const [data, setData] = useState<DayData | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [stage, setStage] = useState<Stage>("loading");
-  const [reflectAnswers, setReflectAnswers] = useState<Record<number, string[]>>({});
-  const [activeQ, setActiveQ] = useState(0);
+  const init = useMemo(() => deriveInitialState(initial), [initial]);
+  const [data, setData] = useState<DayData | null>(init.data ?? null);
+  const [err, setErr] = useState<string | null>(init.err);
+  const [stage, setStage] = useState<Stage>(init.stage ?? "loading");
+  const [reflectAnswers, setReflectAnswers] = useState<Record<number, string[]>>(init.reflectAnswers ?? {});
+  const [activeQ, setActiveQ] = useState(init.activeQ ?? 0);
   const [draft, setDraft] = useState("");
-  const [prayerShare, setPrayerShare] = useState(false);
-  const [prayerText, setPrayerText] = useState<string | null>(null);
+  const [prayerShare, setPrayerShare] = useState(init.prayerShare ?? false);
+  const [prayerText, setPrayerText] = useState<string | null>(init.prayerText ?? null);
   const [streak, setStreak] = useState(1);
   const [showComplete, setShowComplete] = useState(false);
   const [showFeed, setShowFeed] = useState(false);
-  const [alreadyDone, setAlreadyDone] = useState(false);
+  const [alreadyDone, setAlreadyDone] = useState(init.alreadyDone ?? false);
   const [editingRef, setEditingRef] = useState<{ q: number; j: number } | null>(null);
   const [editingPrayer, setEditingPrayer] = useState(false);
   const [editDraft, setEditDraft] = useState("");
 
   // which sections are revealed (passage and lesson reveal one at a time)
-  const [revealed, setRevealed] = useState<{ passage: boolean; lesson: boolean }>({ passage: false, lesson: false });
-
-  useEffect(() => {
-    const url = dayId ? `/api/devotional?dayId=${dayId}` : null;
-    if (!url) { setErr("No day selected."); return; }
-    fetch(url).then((r) => r.json()).then((j) => {
-      if (j.error === "locked") { setErr("This day isn't open. Each day's devotional can only be done on its own day."); return; }
-      if (j.error) { setErr(j.error); return; }
-      const d = j.day as DayData;
-      d.reflectionQuestions = Array.isArray(d.reflectionQuestions) ? d.reflectionQuestions : [];
-      setData(d);
-
-      const savedStep: number = j.progress?.step ?? 0;
-      const completed: boolean = j.progress?.completed ?? false;
-      const savedReflections: { questionIndex: number; body: string }[] = j.myReflections ?? [];
-      const savedPrayer: { body: string; shared: boolean } | null = j.myPrayer ?? null;
-
-      if (savedReflections.length) { const map: Record<number, string[]> = {}; for (const r of savedReflections) map[r.questionIndex] = [r.body]; setReflectAnswers(map); }
-      if (savedPrayer) { setPrayerText(savedPrayer.body); setPrayerShare(!!savedPrayer.shared); }
-
-      // hydrate reveal + stage from saved step
-      if (savedStep >= 1) setRevealed({ passage: true, lesson: true });
-      if (completed || savedStep >= 4) { setAlreadyDone(true); setStage("complete"); }
-      else if (savedStep === 3) setStage("complete");
-      else if (savedStep === 2) setStage("prayer");
-      else if (savedStep === 1) setStage("lesson");
-      else setStage("intro");
-
-      const answered = new Set(savedReflections.map((r) => r.questionIndex));
-      let firstUnanswered = 0;
-      while (answered.has(firstUnanswered) && firstUnanswered < d.reflectionQuestions.length) firstUnanswered++;
-      setActiveQ(Math.min(firstUnanswered, Math.max(0, d.reflectionQuestions.length - 1)));
-      if (savedStep === 1 && answered.size > 0 && answered.size < d.reflectionQuestions.length) setStage("reflect");
-    }).catch(() => setErr("Could not load."));
-  }, [dayId]);
+  const [revealed, setRevealed] = useState<{ passage: boolean; lesson: boolean }>(init.revealed ?? { passage: false, lesson: false });
 
   if (err) return <div style={{ padding: 28, color: "var(--muted)", textAlign: "center", lineHeight: 1.6 }}>{err}</div>;
   if (!data || stage === "loading") return (
