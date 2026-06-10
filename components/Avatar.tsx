@@ -14,13 +14,7 @@ export function Avatar({ name, image, size = 34 }: { name: string; image?: strin
   );
 }
 
-// Folded praying hands — Tabler has no folded-hands glyph, so this is a custom line icon.
-export function PrayerHands({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-2px" }} aria-hidden="true">
-      <path d="M12 4C9.6 7.2 7.3 10.6 6.2 14c-.7 2.3.5 4.2 2.9 4.6l2.9.5" />
-      <path d="M12 4c2.4 3.2 4.7 6.6 5.8 10 .7 2.3-.5 4.2-2.9 4.6l-2.9.5" />
-      <path d="M12 4v15" />
-    </svg>
-  );
+// Folded praying hands — the 🙏 emoji renders cleanest and most recognizably.
+export function PrayerHands({ size = 14 }: { size?: number }) {
+  return <span aria-hidden="true" style={{ fontSize: size, lineHeight: 1 }}>🙏</span>;
 }

@@ -124,7 +124,7 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <button className="btn-ghost" onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "" })}><i className="ti ti-plus" /> New series</button>
-        <button className="btn-ghost" onClick={() => setImporting(true)}><i className="ti ti-file-import" /> Import Markdown</button>
+        <button className="btn-ghost" onClick={() => setImporting(true)}><i className="ti ti-file-import" /> Import</button>
       </div>
       {series.map((s) => (
         <Card key={s.id}>

@@ -14,9 +14,9 @@ export default function HomeView({ name, churchName, seriesList, streak, points 
 
   return (
     <div style={{ padding: "26px 18px" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 26 }}>
+      <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 12 }}><i className="ti ti-building-church" /> {churchName}</div>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 26 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}><i className="ti ti-building-church" /> {churchName}</div>
           <div style={{ fontSize: 13, color: "var(--muted)" }}>{greeting}</div>
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.015em", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
         </div>
