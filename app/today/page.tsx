@@ -9,5 +9,5 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   if (!user) redirect("/login");
   const { dayId } = await searchParams;
   const [initial, nav] = await Promise.all([devotionalPayload(user, dayId ?? null), navConfig(user)]);
-  return (<><TopBar isAdmin={user.role !== "MEMBER"} nav={nav} /><DailyFlow initial={initial} /></>);
+  return (<><TopBar isAdmin={user.role !== "MEMBER"} nav={nav} /><DailyFlow initial={initial} nav={nav} /></>);
 }

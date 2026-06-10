@@ -75,7 +75,10 @@ function deriveInitialState(initial: Initial): DerivedState {
   return { err: null, data: d, reflectAnswers, prayerText: savedPrayer?.body ?? null, prayerShare: !!savedPrayer?.shared, revealed, stage, activeQ, alreadyDone };
 }
 
-export default function DailyFlow({ initial }: { initial: Initial }) {
+export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { reflections: boolean; prayer: boolean; community: boolean } }) {
+  const showReflections = nav?.reflections ?? true;
+  const showPrayers = nav?.prayer ?? true;
+  const canSeeFeed = showReflections || showPrayers;
   const router = useRouter();
   const init = useMemo(() => deriveInitialState(initial), [initial]);
   const [data, setData] = useState<DayData | null>(init.data ?? null);
@@ -260,11 +263,11 @@ export default function DailyFlow({ initial }: { initial: Initial }) {
         {stage === "prayer" && prayerText && (<button className="btn-ghost btn-dock" onClick={() => setStage("complete")}><i className="ti ti-arrow-down" /> Continue</button>)}
         {stage === "prayer" && !prayerText && (<InputBar value={draft} setValue={setDraft} onSend={sendPrayer} placeholder="Write your prayer…" />)}
         {stage === "complete" && !showComplete && !alreadyDone && (<button className="btn-primary" style={{ maxWidth: 320 }} onClick={completeDay}><i className="ti ti-check" /> Complete day</button>)}
-        {stage === "complete" && alreadyDone && (<button className="btn-ghost btn-dock" onClick={() => setShowFeed(true)}><i className="ti ti-users" /> See reflections</button>)}
+        {stage === "complete" && alreadyDone && canSeeFeed && (<button className="btn-ghost btn-dock" onClick={() => setShowFeed(true)}><i className="ti ti-users" /> See {showReflections ? "reflections" : "prayers"}</button>)}
       </div>
 
-      {showComplete && <CompleteOverlay streak={streak} points={points} onSeeFeed={() => setShowFeed(true)} />}
-      {showFeed && (<CommunitySheet myPrayer={prayerShare ? prayerText : null} onClose={() => { setShowFeed(false); router.push("/"); }} />)}
+      {showComplete && <CompleteOverlay streak={streak} points={points} onSeeFeed={canSeeFeed ? () => setShowFeed(true) : undefined} onDone={() => router.push("/")} />}
+      {showFeed && (<CommunitySheet myPrayer={prayerShare ? prayerText : null} reflectionsOn={showReflections} prayersOn={showPrayers} onClose={() => { setShowFeed(false); router.push("/"); }} />)}
     </div>
   );
 }
@@ -295,7 +298,7 @@ function InputBar({ value, setValue, onSend, placeholder }: { value: string; set
   );
 }
 
-function CompleteOverlay({ streak, points, onSeeFeed }: { streak: number; points: number; onSeeFeed: () => void }) {
+function CompleteOverlay({ streak, points, onSeeFeed, onDone }: { streak: number; points: number; onSeeFeed?: () => void; onDone: () => void }) {
   const [phase, setPhase] = useState(0);
   useEffect(() => { const t1 = setTimeout(() => setPhase(1), 120); const t2 = setTimeout(() => setPhase(2), 1100); const t3 = setTimeout(() => setPhase(3), 1500); return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; }, []);
   return (
@@ -312,14 +315,16 @@ function CompleteOverlay({ streak, points, onSeeFeed }: { streak: number; points
         <div style={{ fontSize: 14, color: "var(--body)", marginTop: 5 }}><i className="ti ti-flame" style={{ color: "var(--accent)" }} /> {streak}-day streak · <i className="ti ti-star" style={{ color: "var(--accent)" }} /> +{points}</div>
       </div>
       <div style={{ position: "absolute", bottom: 24, left: 18, right: 18, opacity: phase >= 3 ? 1 : 0, transition: "opacity .5s", display: "flex", justifyContent: "center" }}>
-        <button className="btn-primary" style={{ maxWidth: 320 }} onClick={onSeeFeed}>See how others reflected <i className="ti ti-chevron-up" /></button>
+        {onSeeFeed
+          ? <button className="btn-primary" style={{ maxWidth: 320 }} onClick={onSeeFeed}>See how others reflected <i className="ti ti-chevron-up" /></button>
+          : <button className="btn-primary" style={{ maxWidth: 320 }} onClick={onDone}>Back to home <i className="ti ti-home" /></button>}
       </div>
     </div>
   );
 }
 
-function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClose: () => void }) {
-  const [tab, setTab] = useState<"reflections" | "prayers">("reflections");
+function CommunitySheet({ myPrayer, reflectionsOn, prayersOn, onClose }: { myPrayer: string | null; reflectionsOn: boolean; prayersOn: boolean; onClose: () => void }) {
+  const [tab, setTab] = useState<"reflections" | "prayers">(reflectionsOn ? "reflections" : "prayers");
   const [reflections, setReflections] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [shown, setShown] = useState(false);
@@ -342,9 +347,11 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
             <div className="label" style={{ display: "flex", alignItems: "center", gap: 5 }}><i className="ti ti-users" /> Community</div>
             <button onClick={onClose} style={{ width: 30, height: 30, border: "none", background: "var(--glassBg)", borderRadius: "50%", color: "var(--body)" }}><i className="ti ti-x" /></button>
           </div>
-          <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4 }}>
-            {(["reflections", "prayers"] as const).map((t) => (<button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "var(--glassBorder)" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9 }}>{t === "reflections" ? "Reflections" : "Prayer room"}</button>))}
-          </div>
+          {reflectionsOn && prayersOn && (
+            <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4 }}>
+              {(["reflections", "prayers"] as const).map((t) => (<button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "var(--glassBorder)" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9 }}>{t === "reflections" ? "Reflections" : "Prayer room"}</button>))}
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           {loading && [0, 1].map((i) => (<div key={i} className="skel" style={{ height: 92, borderRadius: 16, display: "block" }} />))}
