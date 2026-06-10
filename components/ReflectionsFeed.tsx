@@ -1,7 +1,6 @@
 "use client";
 import PostThread from "./Thread";
-
-const initialsOf = (a: string) => (a === "Anonymous" ? "?" : a.split(" ").map((s) => s[0]).slice(0, 2).join(""));
+import { Avatar } from "./Avatar";
 
 export default function ReflectionsFeed({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
   const threads = initial;
@@ -25,7 +24,7 @@ function Post({ p, last }: { p: any; last: boolean }) {
   return (
     <div style={{ display: "flex", gap: 10 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
-        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500 }}>{initialsOf(p.author)}</div>
+        <Avatar name={p.author} image={p.image} size={34} />
         {!last && <div style={{ width: 2, flex: 1, background: "var(--line)", marginTop: 4, minHeight: 8 }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0, paddingBottom: last ? 4 : 20 }}>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Avatar } from "./Avatar";
 
 type Tab = "content" | "members" | "activity" | "moderation" | "settings";
 
@@ -107,7 +108,16 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveDay", ...d }) });
     setEditingDay(null); load();
   }
-  if (editingDay) return <DayEditor day={editingDay} onSave={saveDay} onCancel={() => setEditingDay(null)} />;
+  async function deleteDay(id: string) {
+    await fetch(`/api/admin?type=day&id=${id}`, { method: "DELETE" });
+    setEditingDay(null); load();
+  }
+  async function deleteSeries(id: string, title: string) {
+    if (!confirm(`Delete the series "${title}"? This permanently removes it and all its days, reflections, and prayers. This can't be undone.`)) return;
+    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteSeries", seriesId: id }) });
+    load();
+  }
+  if (editingDay) return <DayEditor day={editingDay} onSave={saveDay} onCancel={() => setEditingDay(null)} onDelete={editingDay.id ? () => { if (confirm("Delete this day? This can't be undone.")) deleteDay(editingDay.id); } : undefined} />;
   if (editing) return <SeriesEditor editing={editing} onChange={setEditing} onSave={saveSeries} onCancel={() => setEditing(null)} />;
   if (importing) return <SeriesImporter onImported={() => { setImporting(false); load(); }} onCancel={() => setImporting(false)} />;
   return (
@@ -126,6 +136,7 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={() => setEditing({ id: s.id, title: s.title, subtitle: s.subtitle, weekNumber: s.weekNumber, startDate: toDateInput(s.startDate) })} style={iconBtn}><i className="ti ti-edit" /></button>
               <button onClick={() => publish(s.id, !s.published)} style={{ ...iconBtn, color: s.published ? "var(--accent)" : "var(--muted)" }}><i className={`ti ${s.published ? "ti-eye" : "ti-eye-off"}`} /></button>
+              <button onClick={() => deleteSeries(s.id, s.title)} style={{ ...iconBtn, color: "#b4452f" }} aria-label="Delete series"><i className="ti ti-trash" /></button>
             </div>
           </div>
           {s.days.map((d: any) => (
@@ -198,7 +209,7 @@ function SeriesEditor({ editing, onChange, onSave, onCancel }: { editing: any; o
   );
 }
 
-function DayEditor({ day, onSave, onCancel }: { day: any; onSave: (d: any) => void; onCancel: () => void }) {
+function DayEditor({ day, onSave, onCancel, onDelete }: { day: any; onSave: (d: any) => void; onCancel: () => void; onDelete?: () => void }) {
   const [d, setD] = useState({ ...day, reflectionQuestions: Array.isArray(day.reflectionQuestions) && day.reflectionQuestions.length ? day.reflectionQuestions : [""] });
   const set = (k: string, v: any) => setD({ ...d, [k]: v });
   const setQ = (i: number, v: string) => { const q = [...d.reflectionQuestions]; q[i] = v; set("reflectionQuestions", q); };
@@ -228,6 +239,7 @@ function DayEditor({ day, onSave, onCancel }: { day: any; onSave: (d: any) => vo
           <button className="btn-primary" style={{ flex: 1 }} onClick={() => onSave({ ...d, reflectionQuestions: d.reflectionQuestions.filter((q: string) => q.trim()) })}>Save day</button>
           <button className="btn-ghost" onClick={onCancel}>Cancel</button>
         </div>
+        {onDelete && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#b4452f", fontSize: 13, marginTop: 14, padding: "4px 0" }}><i className="ti ti-trash" /> Delete this day</button>}
       </Card>
     </div>
   );
@@ -252,6 +264,7 @@ function Members() {
       <div className="label" style={{ marginBottom: 10 }}>{members.length} member{members.length === 1 ? "" : "s"}</div>
       {members.map((m) => (
         <div key={m.id} style={{ background: "var(--glassBg)", border: "1px solid var(--line)", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+          <Avatar name={m.name} image={m.image} size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 500 }}>{m.name}{m.isMe && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
             <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>

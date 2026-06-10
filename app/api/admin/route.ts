@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
       const day = id ? await prisma.day.update({ where: { id }, data: payload }) : await prisma.day.create({ data: payload });
       return NextResponse.json({ day });
     }
+    case "deleteSeries": {
+      const owns = await prisma.series.findFirst({ where: { id: data.seriesId, churchId }, select: { id: true } });
+      if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      await prisma.series.delete({ where: { id: data.seriesId } });
+      return NextResponse.json({ ok: true });
+    }
     case "publish": {
       const owns = await prisma.series.findFirst({ where: { id: data.seriesId, churchId } });
       if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 });

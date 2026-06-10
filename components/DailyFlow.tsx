@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PostThread from "./Thread";
+import { Avatar } from "./Avatar";
 
 type DayData = {
   id: string; order: number; title: string;
@@ -353,7 +354,7 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{t.dayTitle}</div>
               {t.posts.map((p: any) => (
                 <div key={p.id} style={{ display: "flex", gap: 9, marginBottom: 14 }}>
-                  <div style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{p.author === "Anonymous" ? "?" : p.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("")}</div>
+                  <Avatar name={p.author} image={p.image} size={30} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
                     <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{p.body}</div>
@@ -365,7 +366,7 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
           ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
           {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-pray", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
-          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[]}><PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} /></PostCard>))}
+          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} image={p.image} reactions={[]}><PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} /></PostCard>))}
           {!loading && tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>
       </div>
@@ -373,12 +374,11 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
   );
 }
 
-function PostCard({ author, body, mine, note, reactions, children }: { author: string; body: string; mine?: boolean; note?: string; reactions: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }[]; children?: React.ReactNode; }) {
-  const initials = author === "Anonymous" ? "?" : author.split(" ").map((s) => s[0]).slice(0, 2).join("");
+function PostCard({ author, body, mine, note, image, reactions, children }: { author: string; body: string; mine?: boolean; note?: string; image?: string | null; reactions: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }[]; children?: React.ReactNode; }) {
   return (
     <div style={{ background: "var(--glassBg)", border: `1px solid ${mine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
-        <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{initials}</div>
+        <Avatar name={author} image={image} size={30} />
         <div style={{ fontSize: 13, fontWeight: 500 }}>{author}{note && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · {note}</span>}</div>
       </div>
       <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 12 }}>{body}</div>

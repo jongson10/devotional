@@ -39,10 +39,10 @@ export async function reflectionsFeed(user: FeedUser) {
   const rows = await prisma.reflection.findMany({
     where: { shared: true, hidden: false, day: { series: { churchId: user.churchId } } },
     orderBy: { createdAt: "asc" }, take: 300,
-    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { id: true, title: true, order: true, series: { select: { title: true } } } } },
+    include: { user: { select: { id: true, name: true, image: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { id: true, title: true, order: true, series: { select: { title: true } } } } },
   });
   const commentsMap = await commentsByPost("reflectionId", rows.map((r) => r.id), user.id);
-  type Post = { id: string; author: string; isMine: boolean; body: string; questionIndex: number; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean }; comments: any[] };
+  type Post = { id: string; author: string; image: string | null; isMine: boolean; body: string; questionIndex: number; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean }; comments: any[] };
   type DayThread = { key: string; dayTitle: string; dayOrder: number; seriesTitle: string; lastAt: number; posts: Post[] };
   const threads = new Map<string, DayThread>();
   for (const r of rows) {
@@ -50,7 +50,7 @@ export async function reflectionsFeed(user: FeedUser) {
     let t = threads.get(key);
     if (!t) { t = { key, dayTitle: r.day.title, dayOrder: r.day.order, seriesTitle: r.day.series.title, lastAt: 0, posts: [] }; threads.set(key, t); }
     t.posts.push({
-      id: r.id, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", isMine: r.userId === user.id, body: r.body, questionIndex: r.questionIndex,
+      id: r.id, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", image: r.anonymous ? null : (r.user.image ?? null), isMine: r.userId === user.id, body: r.body, questionIndex: r.questionIndex,
       amen: r.reactions.filter((x) => x.type === "AMEN").length,
       praying: r.reactions.filter((x) => x.type === "PRAYING").length,
       iReacted: { amen: r.reactions.some((x) => x.type === "AMEN" && x.userId === user.id), praying: r.reactions.some((x) => x.type === "PRAYING" && x.userId === user.id) },
@@ -66,11 +66,11 @@ export async function prayerRoom(user: FeedUser) {
   const rows = await prisma.prayer.findMany({
     where: { shared: true, hidden: false, user: { churchId: user.churchId } },
     orderBy: { createdAt: "desc" }, take: 80,
-    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } } },
+    include: { user: { select: { id: true, name: true, image: true } }, reactions: { select: { type: true, userId: true } } },
   });
   const commentsMap = await commentsByPost("prayerId", rows.map((p) => p.id), user.id);
   return rows.map((p) => ({
-    id: p.id, body: p.body, author: p.anonymous ? "Anonymous" : p.user.name ?? "Someone", isMine: p.userId === user.id,
+    id: p.id, body: p.body, author: p.anonymous ? "Anonymous" : p.user.name ?? "Someone", image: p.anonymous ? null : (p.user.image ?? null), isMine: p.userId === user.id,
     praying: p.reactions.filter((x) => x.type === "PRAYING").length,
     iPrayed: p.reactions.some((x) => x.type === "PRAYING" && x.userId === user.id),
     createdAt: p.createdAt,
@@ -78,13 +78,13 @@ export async function prayerRoom(user: FeedUser) {
   }));
 }
 
-export type LeaderboardRow = { id: string; name: string; isMe: boolean; streak: number; stars: number; daysCompleted: number };
+export type LeaderboardRow = { id: string; name: string; image: string | null; isMe: boolean; streak: number; stars: number; daysCompleted: number };
 
 export async function leaderboardRows(user: FeedUser): Promise<LeaderboardRow[]> {
   if (!user.churchId) return [];
   const churchId = user.churchId;
   const [members, completedCounts] = await Promise.all([
-    prisma.user.findMany({ where: { churchId }, select: { id: true, name: true, email: true } }),
+    prisma.user.findMany({ where: { churchId }, select: { id: true, name: true, email: true, image: true } }),
     prisma.dayProgress.groupBy({ by: ["userId"], where: { user: { churchId }, completed: true }, _count: { _all: true } }),
   ]);
   const doneByUser = new Map<string, number>(completedCounts.map((c) => [c.userId, c._count._all]));
@@ -92,7 +92,7 @@ export async function leaderboardRows(user: FeedUser): Promise<LeaderboardRow[]>
   return members.map((m) => {
     const s = streaks[m.id];
     const display = (m.name && m.name.trim()) ? m.name.trim().split(" ")[0] : (m.email ? m.email.split("@")[0] : "Member");
-    return { id: m.id, name: display, isMe: m.id === user.id, streak: s?.streak ?? 0, stars: s?.points ?? 0, daysCompleted: doneByUser.get(m.id) ?? 0 };
+    return { id: m.id, name: display, image: (m as any).image ?? null, isMe: m.id === user.id, streak: s?.streak ?? 0, stars: s?.points ?? 0, daysCompleted: doneByUser.get(m.id) ?? 0 };
   });
 }
 
@@ -110,14 +110,14 @@ export async function streakState(userId: string): Promise<StreakState> {
 // Per-member activity for a church: role, last visit (lastSeenAt), last completion,
 // and a combined lastActiveAt. Drives the Members admin, the Activity list, and
 // Community's "last active". Sorted most-recently-active first.
-export type MemberActivity = { id: string; name: string; email: string; role: "MEMBER" | "ADMIN" | "OWNER"; lastSeenAt: string | null; lastCompletedAt: string | null; lastActiveAt: string | null; daysCompleted: number; isMe: boolean };
+export type MemberActivity = { id: string; name: string; image: string | null; email: string; role: "MEMBER" | "ADMIN" | "OWNER"; lastSeenAt: string | null; lastCompletedAt: string | null; lastActiveAt: string | null; daysCompleted: number; isMe: boolean };
 
 export async function memberActivity(user: FeedUser): Promise<MemberActivity[]> {
   if (!user.churchId) return [];
   const churchId = user.churchId;
   const [members, lastDone] = await Promise.all([
     // lastSeenAt cast: Prisma client types regenerate on db push / build.
-    prisma.user.findMany({ where: { churchId }, select: { id: true, name: true, email: true, role: true, lastSeenAt: true } as any }),
+    prisma.user.findMany({ where: { churchId }, select: { id: true, name: true, email: true, role: true, image: true, lastSeenAt: true } as any }),
     prisma.dayProgress.groupBy({ by: ["userId"], where: { user: { churchId }, completed: true }, _max: { completedAt: true }, _count: { _all: true } }),
   ]);
   const doneMap = new Map(lastDone.map((d) => [d.userId, { last: d._max.completedAt as Date | null, count: d._count._all }]));
@@ -128,7 +128,7 @@ export async function memberActivity(user: FeedUser): Promise<MemberActivity[]> 
     const doneT = d?.last ? new Date(d.last).getTime() : 0;
     const lastActive = Math.max(seenT, doneT);
     return {
-      id: m.id, name: display, email: m.email, role: m.role,
+      id: m.id, name: display, image: m.image ?? null, email: m.email, role: m.role,
       lastSeenAt: m.lastSeenAt ? new Date(m.lastSeenAt).toISOString() : null,
       lastCompletedAt: d?.last ? new Date(d.last).toISOString() : null,
       lastActiveAt: lastActive ? new Date(lastActive).toISOString() : null,

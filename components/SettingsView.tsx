@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
+import { Avatar } from "./Avatar";
 
 const inputStyle: React.CSSProperties = { background: "rgba(255,255,255,0.6)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", fontSize: 14, width: "100%" };
 const THEMES: { key: "dawn" | "night" | "auto"; label: string; icon: string }[] = [
@@ -11,17 +12,18 @@ const THEMES: { key: "dawn" | "night" | "auto"; label: string; icon: string }[] 
   { key: "auto", label: "Auto", icon: "ti-device-desktop" },
 ];
 
-export default function SettingsView({ name, email, bio, isAdmin }: { name: string; email: string; bio: string; isAdmin: boolean }) {
+export default function SettingsView({ name, email, bio, image, isAdmin }: { name: string; email: string; bio: string; image: string; isAdmin: boolean }) {
   const router = useRouter();
   const { mode, setMode } = useTheme();
   const [n, setN] = useState(name);
   const [b, setB] = useState(bio);
+  const [img, setImg] = useState(image);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function save() {
     setBusy(true);
-    await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: n, bio: b }) });
+    await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: n, bio: b, image: img }) });
     setBusy(false); setSaved(true); setTimeout(() => setSaved(false), 2200); router.refresh();
   }
 
@@ -31,6 +33,13 @@ export default function SettingsView({ name, email, bio, isAdmin }: { name: stri
 
       <div className="glass" style={{ borderRadius: 14, padding: 16, marginBottom: 14 }}>
         <div className="label" style={{ marginBottom: 12 }}>Profile</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <Avatar name={n || "?"} image={img} size={52} />
+          <label style={{ flex: 1 }}>
+            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Photo URL</span>
+            <input style={inputStyle} value={img} onChange={(e) => setImg(e.target.value)} placeholder="https://… (link to an image)" />
+          </label>
+        </div>
         <label style={{ display: "block", marginBottom: 12 }}>
           <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Name</span>
           <input style={inputStyle} value={n} onChange={(e) => setN(e.target.value)} placeholder="Your name" />
@@ -60,7 +69,7 @@ export default function SettingsView({ name, email, bio, isAdmin }: { name: stri
 
       {isAdmin && (
         <Link href="/admin" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: "1px solid var(--line)", color: "var(--ink)", fontSize: 14, fontWeight: 500 }}>
-          <span><i className="ti ti-settings-cog" style={{ color: "var(--accent)", marginRight: 8 }} />Manage church</span>
+          <span><i className="ti ti-settings-cog" style={{ color: "var(--accent)", marginRight: 8 }} />Manage devotions</span>
           <i className="ti ti-chevron-right" style={{ color: "var(--muted)" }} />
         </Link>
       )}

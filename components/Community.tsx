@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
+import { Avatar } from "./Avatar";
 
-type Row = { id: string; name: string; isMe: boolean; streak: number; stars: number; daysCompleted: number };
+type Row = { id: string; name: string; image: string | null; isMe: boolean; streak: number; stars: number; daysCompleted: number };
 type SortKey = "stars" | "streak" | "daysCompleted";
 const SORTS: { key: SortKey; label: string; icon: string; unit: string }[] = [
   { key: "stars", label: "Stars", icon: "ti-star", unit: "" },
@@ -32,14 +33,14 @@ export default function Community({ churchName, initialRows = [], initialActivit
       <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 18 }}>
         {SORTS.map((s) => (<button key={s.key} onClick={() => setSort(s.key)} style={{ flex: 1, border: "none", background: sort === s.key ? "#fff" : "transparent", color: sort === s.key ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><i className={`ti ${s.icon}`} /> {s.label}</button>))}
       </div>
-      {sorted.length === 0 && <div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No one's on the board yet.</div>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {sorted.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>No one's on the board yet.</div>}
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {sorted.map((r, i) => {
           const val = r[sort]; const unit = SORTS.find((s) => s.key === sort)!.unit;
           return (
-            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, background: r.isMe ? "var(--glassBg)" : "transparent", border: `1px solid ${r.isMe ? "var(--accent)" : "var(--line)"}` }}>
-              <div style={{ width: 24, textAlign: "center", fontSize: 14, fontWeight: 600, color: i < 3 ? "var(--accent)" : "var(--muted)" }}>{i + 1}</div>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, flex: "none" }}>{r.name.slice(0, 1).toUpperCase()}</div>
+            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 2px", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ width: 20, textAlign: "center", fontSize: 14, fontWeight: 600, color: i < 3 ? "var(--accent)" : "var(--muted)" }}>{i + 1}</div>
+              <Avatar name={r.name} image={r.image} size={32} />
               <div style={{ flex: 1, fontSize: 15, fontWeight: r.isMe ? 600 : 500 }}>{r.name}{r.isMe && <span style={{ color: "var(--accent)", fontWeight: 400, fontSize: 13 }}> · you</span>}</div>
               <div style={{ fontSize: 17, fontWeight: 600, color: "var(--accent)" }}>{val}{unit}</div>
             </div>
@@ -50,10 +51,10 @@ export default function Community({ churchName, initialRows = [], initialActivit
       {initialActivity.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <div className="label" style={{ marginBottom: 12 }}>Last active</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             {initialActivity.map((u) => (
-              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 12, background: u.isMe ? "var(--glassBg)" : "transparent", border: `1px solid ${u.isMe ? "var(--accent)" : "transparent"}` }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, flex: "none" }}>{u.name.slice(0, 1).toUpperCase()}</div>
+              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 2px", borderBottom: "1px solid var(--line)" }}>
+                <Avatar name={u.name} image={u.image} size={28} />
                 <div style={{ flex: 1, fontSize: 14, fontWeight: u.isMe ? 600 : 500 }}>{u.name}{u.isMe && <span style={{ color: "var(--accent)", fontWeight: 400, fontSize: 12 }}> · you</span>}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>{fmtAgo(u.lastActiveAt)}</div>
               </div>

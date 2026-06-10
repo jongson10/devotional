@@ -1,7 +1,5 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
 
 type DayStatus = "open" | "future" | "missed" | "always";
@@ -12,42 +10,21 @@ const LATE = "#4F9D69";
 
 export default function HomeView({ name, churchName, seriesList, streak, points }: { name: string; churchName: string; seriesList: SeriesData[]; streak: number; points: number; }) {
   const { resolved } = useTheme();
-  const router = useRouter();
-  const [displayName, setDisplayName] = useState(name);
-  const [editing, setEditing] = useState(false);
-  const [draftName, setDraftName] = useState(name);
   const greeting = resolved === "dawn" ? "Good morning," : "Good evening,";
-
-  async function saveName() {
-    const clean = draftName.trim();
-    if (!clean || clean === displayName) { setEditing(false); return; }
-    setDisplayName(clean); setEditing(false);
-    await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: clean }) });
-    router.refresh();
-  }
 
   return (
     <div style={{ padding: "26px 18px" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 28 }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 26 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}><i className="ti ti-building-church" /> {churchName}</div>
           <div style={{ fontSize: 13, color: "var(--muted)" }}>{greeting}</div>
-          {editing ? (
-            <input autoFocus value={draftName} onChange={(e) => setDraftName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setDraftName(displayName); setEditing(false); } }} onBlur={saveName}
-              style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.015em", borderBottom: "2px solid var(--accent)", paddingBottom: 2, maxWidth: "100%" }} />
-          ) : (
-            <button onClick={() => { setDraftName(displayName); setEditing(true); }} style={{ background: "none", border: "none", padding: 0, display: "flex", alignItems: "center", gap: 7, color: "var(--ink)", maxWidth: "100%" }}>
-              <span style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.015em", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
-              <i className="ti ti-pencil" style={{ fontSize: 14, color: "var(--muted)", flex: "none" }} />
-            </button>
-          )}
+          <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.015em", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
         </div>
         <div style={{ display: "flex", gap: 18, flex: "none" }}>
           <Hero icon="ti-flame" value={streak} label="streak" />
           <Hero icon="ti-star" value={points} label="stars" />
         </div>
       </header>
-
-      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, display: "flex", alignItems: "center", gap: 5 }}><i className="ti ti-building-church" /> {churchName}</div>
 
       {seriesList.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 20, textAlign: "center", color: "var(--muted)" }}>No devotional available yet.</div>)}
       {seriesList.map((s) => <SeriesSection key={s.id} series={s} />)}
