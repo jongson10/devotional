@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Thread from "./Thread";
+import Thread, { ReactionButton } from "./Thread";
 
 type DayData = {
   id: string; order: number; title: string;
@@ -347,28 +347,24 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           {loading && [0, 1].map((i) => (<div key={i} className="skel" style={{ height: 92, borderRadius: 16, display: "block" }} />))}
-          {!loading && tab === "reflections" && reflections.map((g: any) => (
-            <div key={g.key} style={{ background: "var(--glassBg)", border: `1px solid ${g.isMine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{g.author === "Anonymous" ? "?" : g.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("")}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{g.author}{g.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
-                  {g.seriesTitle && <div style={{ fontSize: 11, color: "var(--muted)" }}>{g.seriesTitle}</div>}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {g.items.map((it: any) => (
-                  <div key={it.id}>
-                    <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Day {it.dayOrder} · {it.dayTitle}</div>
-                    <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 8 }}>{it.body}</div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <ReactBtn icon="ti-flame" label="Amen" count={it.amen} on={it.iReacted?.amen} onClick={() => react("AMEN", it.id, "reflection")} />
-                      <ReactBtn icon="ti-hand-stop" label="Praying" count={it.praying} on={it.iReacted?.praying} onClick={() => react("PRAYING", it.id, "reflection")} />
+          {!loading && tab === "reflections" && reflections.map((t: any) => (
+            <div key={t.key} style={{ marginBottom: 14 }}>
+              <div className="label" style={{ marginBottom: 2 }}>{t.seriesTitle} · Day {t.dayOrder}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{t.dayTitle}</div>
+              {t.posts.map((p: any) => (
+                <div key={p.id} style={{ display: "flex", gap: 9, marginBottom: 14 }}>
+                  <div style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{p.author === "Anonymous" ? "?" : p.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("")}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+                    <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{p.body}</div>
+                    <div style={{ display: "flex", gap: 4, marginLeft: -6 }}>
+                      <ReactionButton icon="ti-flame" type="AMEN" count={p.amen} on={p.iReacted?.amen} reflectionId={p.id} />
+                      <ReactionButton icon="ti-hand-stop" type="PRAYING" count={p.praying} on={p.iReacted?.praying} reflectionId={p.id} />
                     </div>
-                    <Thread comments={it.comments} target={{ reflectionId: it.id }} />
+                    <Thread comments={p.comments} target={{ reflectionId: p.id }} />
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}

@@ -1,47 +1,42 @@
 "use client";
-import { useState } from "react";
-import Thread from "./Thread";
+import Thread, { ReactionButton } from "./Thread";
+
+const initialsOf = (a: string) => (a === "Anonymous" ? "?" : a.split(" ").map((s) => s[0]).slice(0, 2).join(""));
+
 export default function ReflectionsFeed({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
-  const items = initial;
-  async function react(type: "AMEN" | "PRAYING", id: string) { await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, reflectionId: id }) }); }
+  const threads = initial;
   return (
     <div style={{ padding: "26px 18px" }}>
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
-      <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 20 }}>Reflections</h1>
-      {items.length === 0 && (<div className="glass" style={{ borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted)" }}>No reflections yet. As people work through the devotional, their reflections appear here.</div>)}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {items.map((g) => {
-          const initials = g.author === "Anonymous" ? "?" : g.author.split(" ").map((s: string) => s[0]).slice(0, 2).join("");
-          return (
-            <div key={g.key} className="rise" style={{ background: "var(--glassBg)", border: `1px solid ${g.isMine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>{initials}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{g.author}{g.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
-                  {g.seriesTitle && <div style={{ fontSize: 11, color: "var(--muted)" }}>{g.seriesTitle}</div>}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {g.items.map((it: any) => (
-                  <div key={it.id}>
-                    <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Day {it.dayOrder} · {it.dayTitle}</div>
-                    <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 8 }}>{it.body}</div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <FeedReact icon="ti-flame" label="Amen" count={it.amen} on={it.iReacted?.amen} onClick={() => react("AMEN", it.id)} />
-                      <FeedReact icon="ti-hand-stop" label="Praying" count={it.praying} on={it.iReacted?.praying} onClick={() => react("PRAYING", it.id)} />
-                    </div>
-                    <Thread comments={it.comments} target={{ reflectionId: it.id }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 22 }}>Reflections</h1>
+      {threads.length === 0 && (<div style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6 }}>No reflections yet. As people work through the devotional, their reflections appear here.</div>)}
+      {threads.map((t: any) => (
+        <div key={t.key} style={{ marginBottom: 30 }}>
+          <div className="label" style={{ marginBottom: 3 }}>{t.seriesTitle} · Day {t.dayOrder}</div>
+          <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 16 }}>{t.dayTitle}</div>
+          {t.posts.map((p: any, i: number) => <Post key={p.id} p={p} last={i === t.posts.length - 1} />)}
+        </div>
+      ))}
     </div>
   );
 }
-function FeedReact({ icon, label, count, on, onClick }: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }) {
-  const [active, setActive] = useState(!!on); const [c, setC] = useState(count);
-  return (<button onClick={() => { setActive(!active); setC(c + (active ? -1 : 1)); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 11px", borderRadius: 99, border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`, background: active ? "var(--glassBg)" : "transparent", color: active ? "var(--accent)" : "var(--body)" }}><i className={`ti ${icon}`} /> {label} <span>{c}</span></button>);
+
+function Post({ p, last }: { p: any; last: boolean }) {
+  return (
+    <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
+        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500 }}>{initialsOf(p.author)}</div>
+        {!last && <div style={{ width: 2, flex: 1, background: "var(--line)", marginTop: 4, minHeight: 8 }} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, paddingBottom: last ? 4 : 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+        <div style={{ fontSize: 15, lineHeight: 1.55, color: "var(--body)", margin: "3px 0 5px" }}>{p.body}</div>
+        <div style={{ display: "flex", gap: 4, marginLeft: -6 }}>
+          <ReactionButton icon="ti-flame" type="AMEN" count={p.amen} on={p.iReacted?.amen} reflectionId={p.id} />
+          <ReactionButton icon="ti-hand-stop" type="PRAYING" count={p.praying} on={p.iReacted?.praying} reflectionId={p.id} />
+        </div>
+        <Thread comments={p.comments} target={{ reflectionId: p.id }} />
+      </div>
+    </div>
+  );
 }

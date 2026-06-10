@@ -9,7 +9,7 @@ import { isDayOpen } from "@/lib/unlock";
 
 export type FeedUser = { id: string; churchId: string | null };
 
-// ---- Threaded comments (nested replies on reflections/prayers) ----
+// ---- Replies (one level, Twitter-style) on reflections/prayers ----
 // prisma.comment cast as any until the client is regenerated (prisma db push) in deploy.
 function commentNode(c: any, userId: string): any {
   return {
@@ -17,20 +17,9 @@ function commentNode(c: any, userId: string): any {
     amen: c.reactions.filter((x: any) => x.type === "AMEN").length,
     praying: c.reactions.filter((x: any) => x.type === "PRAYING").length,
     iReacted: { amen: c.reactions.some((x: any) => x.type === "AMEN" && x.userId === userId), praying: c.reactions.some((x: any) => x.type === "PRAYING" && x.userId === userId) },
-    replies: [] as any[],
   };
 }
-function buildTree(flat: any[], userId: string): any[] {
-  const nodes = new Map<string, any>();
-  flat.forEach((c) => nodes.set(c.id, commentNode(c, userId)));
-  const roots: any[] = [];
-  flat.forEach((c) => {
-    const n = nodes.get(c.id);
-    if (c.parentId && nodes.has(c.parentId)) nodes.get(c.parentId).replies.push(n);
-    else roots.push(n);
-  });
-  return roots;
-}
+// Flat list of replies per post, oldest first.
 async function commentsByPost(field: "reflectionId" | "prayerId", postIds: string[], userId: string): Promise<Map<string, any[]>> {
   const byPost = new Map<string, any[]>();
   if (postIds.length === 0) return byPost;
@@ -39,44 +28,37 @@ async function commentsByPost(field: "reflectionId" | "prayerId", postIds: strin
     orderBy: { createdAt: "asc" },
     include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } } },
   });
-  const flatByPost = new Map<string, any[]>();
-  for (const c of flat) { const pid = c[field]; if (!flatByPost.has(pid)) flatByPost.set(pid, []); flatByPost.get(pid)!.push(c); }
-  for (const [pid, list] of flatByPost) byPost.set(pid, buildTree(list, userId));
+  for (const c of flat) { const pid = c[field]; if (!byPost.has(pid)) byPost.set(pid, []); byPost.get(pid)!.push(commentNode(c, userId)); }
   return byPost;
 }
 
-// One card per person per series: a member's shared reflections for a series are
-// grouped together, each reflection keeping its own day label, reactions, and reply thread.
+// One thread per DAY: everyone's reflections for a day are threaded together.
+// Threads ordered by most-recent activity; posts within a thread read oldest-first.
 export async function reflectionsFeed(user: FeedUser) {
   if (!user.churchId) return [];
   const rows = await prisma.reflection.findMany({
     where: { shared: true, hidden: false, day: { series: { churchId: user.churchId } } },
-    orderBy: { createdAt: "desc" }, take: 200,
-    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { title: true, order: true, series: { select: { id: true, title: true } } } } },
+    orderBy: { createdAt: "asc" }, take: 300,
+    include: { user: { select: { id: true, name: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { id: true, title: true, order: true, series: { select: { title: true } } } } },
   });
-  type Item = { id: string; dayTitle: string; dayOrder: number; questionIndex: number; body: string; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean }; comments: any[] };
-  type Group = { key: string; author: string; isMine: boolean; seriesTitle: string; items: Item[] };
-  const groups = new Map<string, Group>();
+  const commentsMap = await commentsByPost("reflectionId", rows.map((r) => r.id), user.id);
+  type Post = { id: string; author: string; isMine: boolean; body: string; questionIndex: number; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean }; comments: any[] };
+  type DayThread = { key: string; dayTitle: string; dayOrder: number; seriesTitle: string; lastAt: number; posts: Post[] };
+  const threads = new Map<string, DayThread>();
   for (const r of rows) {
-    const key = `${r.userId}::${r.day.series.id}`;
-    let g = groups.get(key);
-    if (!g) {
-      g = { key, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", isMine: r.userId === user.id, seriesTitle: r.day.series.title, items: [] };
-      groups.set(key, g);
-    }
-    g.items.push({
-      id: r.id, dayTitle: r.day.title, dayOrder: r.day.order, questionIndex: r.questionIndex, body: r.body,
+    const key = r.day.id;
+    let t = threads.get(key);
+    if (!t) { t = { key, dayTitle: r.day.title, dayOrder: r.day.order, seriesTitle: r.day.series.title, lastAt: 0, posts: [] }; threads.set(key, t); }
+    t.posts.push({
+      id: r.id, author: r.anonymous ? "Anonymous" : r.user.name ?? "Someone", isMine: r.userId === user.id, body: r.body, questionIndex: r.questionIndex,
       amen: r.reactions.filter((x) => x.type === "AMEN").length,
       praying: r.reactions.filter((x) => x.type === "PRAYING").length,
       iReacted: { amen: r.reactions.some((x) => x.type === "AMEN" && x.userId === user.id), praying: r.reactions.some((x) => x.type === "PRAYING" && x.userId === user.id) },
-      comments: [],
+      comments: commentsMap.get(r.id) ?? [],
     });
+    t.lastAt = Math.max(t.lastAt, new Date(r.createdAt).getTime());
   }
-  const commentsMap = await commentsByPost("reflectionId", rows.map((r) => r.id), user.id);
-  const out = Array.from(groups.values());
-  out.forEach((g) => g.items.forEach((it) => { it.comments = commentsMap.get(it.id) ?? []; }));
-  out.forEach((g) => g.items.sort((a, b) => a.dayOrder - b.dayOrder || a.questionIndex - b.questionIndex));
-  return out;
+  return Array.from(threads.values()).sort((a, b) => b.lastAt - a.lastAt);
 }
 
 export async function prayerRoom(user: FeedUser) {
