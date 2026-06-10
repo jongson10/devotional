@@ -6,16 +6,17 @@ import { useTheme } from "./ThemeProvider";
 
 type DayStatus = "open" | "future" | "missed" | "always";
 type Day = { id: string; order: number; title: string; passageRef: string; pointsReward: number; done: boolean; lateDone: boolean; status: DayStatus; openable: boolean; unlocksOn: string | null; };
+type SeriesData = { id: string; title: string; subtitle: string | null; weekNumber: number | null; days: Day[]; todayCardId: string | null };
 
-export default function HomeView({ name, churchName, seriesTitle, days, todayCard, streak, points }: { name: string; churchName: string; seriesTitle: string | null; days: Day[]; todayCard: Day | null; streak: number; points: number; }) {
+const LATE = "#4F9D69";
+
+export default function HomeView({ name, churchName, seriesList, streak, points }: { name: string; churchName: string; seriesList: SeriesData[]; streak: number; points: number; }) {
   const { resolved } = useTheme();
   const router = useRouter();
   const [displayName, setDisplayName] = useState(name);
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const greeting = resolved === "dawn" ? "Good morning," : "Good evening,";
-  const doneCount = days.filter((d) => d.done).length;
-  const LATE = "#4F9D69";
 
   async function saveName() {
     const clean = draftName.trim();
@@ -46,18 +47,28 @@ export default function HomeView({ name, churchName, seriesTitle, days, todayCar
         </div>
       </header>
 
-      {days.length > 0 && (
-        <div className="glass" style={{ borderRadius: 14, padding: "12px 14px", marginBottom: 26, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1 }}><div style={{ height: 6, background: "var(--line)", borderRadius: 99, overflow: "hidden" }}><div style={{ width: `${(doneCount / Math.max(1, days.length)) * 100}%`, height: "100%", background: "var(--accent)", borderRadius: 99 }} /></div></div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>{doneCount} / {days.length}</div>
-        </div>
-      )}
+      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, display: "flex", alignItems: "center", gap: 5 }}><i className="ti ti-building-church" /> {churchName}</div>
 
-      <div className="label" style={{ marginBottom: 12 }}>{seriesTitle ?? "No series yet"}</div>
+      {seriesList.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 20, textAlign: "center", color: "var(--muted)" }}>No devotional available yet.</div>)}
+      {seriesList.map((s) => <SeriesSection key={s.id} series={s} />)}
+    </div>
+  );
+}
+
+function SeriesSection({ series }: { series: SeriesData }) {
+  const doneCount = series.days.filter((d) => d.done).length;
+  return (
+    <div style={{ marginBottom: 30 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+        <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", flex: 1, minWidth: 0 }}>{series.title}</div>
+        {series.days.length > 0 && <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", flex: "none" }}>{doneCount} / {series.days.length}</div>}
+      </div>
+      {(series.subtitle || series.weekNumber) && <div className="label" style={{ marginBottom: 14 }}>{series.weekNumber ? `Week ${series.weekNumber}` : ""}{series.weekNumber && series.subtitle ? " · " : ""}{series.subtitle ?? ""}</div>}
+      {!series.subtitle && !series.weekNumber && <div style={{ marginBottom: 14 }} />}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {days.map((d) => {
-          const isTodayCard = todayCard?.id === d.id;
+        {series.days.map((d) => {
+          const isTodayCard = series.todayCardId === d.id;
           if (isTodayCard) {
             return (
               <Link key={d.id} href={`/today?dayId=${d.id}`} style={{ background: "var(--dark)", borderRadius: 18, padding: "16px 17px", color: "#fff" }}>
@@ -76,7 +87,7 @@ export default function HomeView({ name, churchName, seriesTitle, days, todayCar
           const locked = !d.openable && !d.done;
           const isFuture = d.status === "future" && !d.done;
           const dotColor = d.done ? (d.lateDone ? LATE : "var(--accent)") : "transparent";
-          const sub = d.done ? (d.lateDone ? "Completed late" : d.passageRef) : isFuture && d.unlocksOn ? `Opens ${new Date(d.unlocksOn).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : d.passageRef;
+          const sub = d.done ? (d.lateDone ? "Completed late" : d.passageRef) : isFuture && d.unlocksOn ? `Opens ${new Date(d.unlocksOn).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })}` : d.passageRef;
           const inner = (
             <>
               <div style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", background: dotColor, border: d.done ? "none" : "1.5px solid var(--line)", color: d.done ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500 }}>
@@ -92,7 +103,7 @@ export default function HomeView({ name, churchName, seriesTitle, days, todayCar
           const style: React.CSSProperties = { borderRadius: 18, padding: "14px 16px", display: "flex", alignItems: "center", gap: 13, opacity: locked ? 0.55 : 1 };
           return (d.openable || d.done) ? <Link key={d.id} href={`/today?dayId=${d.id}`} className="glass" style={style}>{inner}</Link> : <div key={d.id} className="glass" style={style}>{inner}</div>;
         })}
-        {days.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 20, textAlign: "center", color: "var(--muted)" }}>No devotional available yet.</div>)}
+        {series.days.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 18, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>No days yet.</div>)}
       </div>
     </div>
   );

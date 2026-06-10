@@ -12,37 +12,37 @@ export default async function HomePage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const [church, series, streak] = await Promise.all([
+  const [church, allSeries, streak] = await Promise.all([
     user.churchId ? prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : Promise.resolve(null),
-    user.churchId ? prisma.series.findFirst({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve(null),
+    user.churchId ? prisma.series.findMany({ where: { churchId: user.churchId, published: true }, orderBy: { createdAt: "desc" }, include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve([]),
     streakState(user.id),
   ]);
   const tz = church?.timezone || "UTC";
-
-  const progressRows = series
-    ? await prisma.dayProgress.findMany({ where: { userId: user.id, day: { seriesId: series.id } }, select: { dayId: true, completed: true, onTime: true } })
-    : [];
-  const doneMap = new Map(progressRows.filter((p: { completed: boolean }) => p.completed).map((p: { dayId: string; onTime: boolean }) => [p.dayId, p.onTime]));
   const isAdmin = user.role !== "MEMBER";
 
-  const days = series?.days.map((d: { id: string; order: number; title: string; passageRef: string; pointsReward: number }) => {
-    const status = dayStatus(series.startDate, d.order, tz);
-    const done = doneMap.has(d.id);
-    const lateDone = done && doneMap.get(d.id) === false;
-    const openable = isAdmin || status === "open" || status === "always" || status === "missed";
-    const uOn = unlockDate(series.startDate, d.order, tz);
-    return { id: d.id, order: d.order, title: d.title, passageRef: d.passageRef, pointsReward: d.pointsReward, done, lateDone, status, openable, unlocksOn: uOn ? uOn.toISOString() : null };
-  }) ?? [];
+  const seriesIds = allSeries.map((s) => s.id);
+  const progressRows = seriesIds.length
+    ? await prisma.dayProgress.findMany({ where: { userId: user.id, day: { seriesId: { in: seriesIds } } }, select: { dayId: true, completed: true, onTime: true } })
+    : [];
+  const doneMap = new Map(progressRows.filter((p) => p.completed).map((p) => [p.dayId, p.onTime] as const));
 
-  const todayCard = days.find((d: (typeof days)[number]) => d.status === "open")
-    ?? days.find((d: (typeof days)[number]) => d.status === "always" && !d.done)
-    ?? days.find((d: (typeof days)[number]) => d.openable && !d.done)
-    ?? null;
+  const seriesList = allSeries.map((series) => {
+    const days = series.days.map((d) => {
+      const status = dayStatus(series.startDate, d.order, tz);
+      const done = doneMap.has(d.id);
+      const lateDone = done && doneMap.get(d.id) === false;
+      const openable = isAdmin || status === "open" || status === "always" || status === "missed";
+      const uOn = unlockDate(series.startDate, d.order);
+      return { id: d.id, order: d.order, title: d.title, passageRef: d.passageRef, pointsReward: d.pointsReward, done, lateDone, status, openable, unlocksOn: uOn ? uOn.toISOString() : null };
+    });
+    const todayCard = days.find((d) => d.status === "open") ?? days.find((d) => d.status === "always" && !d.done) ?? days.find((d) => d.openable && !d.done) ?? null;
+    return { id: series.id, title: series.title, subtitle: series.subtitle, weekNumber: series.weekNumber, days, todayCardId: todayCard?.id ?? null };
+  });
 
   return (
     <>
       <TopBar isAdmin={isAdmin} />
-      <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesTitle={series?.title ?? null} days={days} todayCard={todayCard} streak={streak.streak} points={streak.points} />
+      <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesList={seriesList} streak={streak.streak} points={streak.points} />
     </>
   );
 }

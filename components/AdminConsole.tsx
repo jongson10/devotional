@@ -97,23 +97,10 @@ function ContentManager() {
     setEditingDay(null); load();
   }
   if (editingDay) return <DayEditor day={editingDay} onSave={saveDay} onCancel={() => setEditingDay(null)} />;
+  if (editing) return <SeriesEditor editing={editing} onChange={setEditing} onSave={saveSeries} onCancel={() => setEditing(null)} />;
   return (
     <div>
       <button className="btn-ghost" style={{ marginBottom: 16 }} onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "" })}><i className="ti ti-plus" /> New series</button>
-      {editing && (
-        <Card>
-          <Field label="Series title"><input style={inputStyle} value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="Broken Tools and Utter Victory" /></Field>
-          <Field label="Subtitle"><input style={inputStyle} value={editing.subtitle ?? ""} onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })} /></Field>
-          <Field label="Week number"><input style={inputStyle} type="number" value={editing.weekNumber ?? ""} onChange={(e) => setEditing({ ...editing, weekNumber: Number(e.target.value) })} /></Field>
-          <Field label="Start date (Day 1 opens this day)" hint="Day N opens that many days later, only on that day. Blank = all days open immediately.">
-            <input style={inputStyle} type="date" value={toDateInput(editing.startDate)} onChange={(e) => setEditing({ ...editing, startDate: e.target.value })} />
-          </Field>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveSeries(editing)}>Save series</button>
-            <button className="btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
-          </div>
-        </Card>
-      )}
       {series.map((s) => (
         <Card key={s.id}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -136,6 +123,27 @@ function ContentManager() {
           <button className="btn-ghost" style={{ fontSize: 13, padding: 9, marginTop: 4 }} onClick={() => setEditingDay({ seriesId: s.id, order: s.days.length + 1, title: "", passageRef: "", passageText: "", teaching: "", reflectionQuestions: [""], prayerPrompt: "", pointsReward: 60 })}><i className="ti ti-plus" /> Add day</button>
         </Card>
       ))}
+    </div>
+  );
+}
+
+function SeriesEditor({ editing, onChange, onSave, onCancel }: { editing: any; onChange: (e: any) => void; onSave: (s: any) => void; onCancel: () => void }) {
+  return (
+    <div>
+      <button className="btn-ghost" style={{ marginBottom: 14, width: "auto", padding: "8px 14px" }} onClick={onCancel}><i className="ti ti-arrow-left" /> Back</button>
+      <Card>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{editing.id ? "Edit series" : "New series"}</div>
+        <Field label="Series title"><input style={inputStyle} value={editing.title} onChange={(e) => onChange({ ...editing, title: e.target.value })} placeholder="Broken Tools and Utter Victory" /></Field>
+        <Field label="Subtitle"><input style={inputStyle} value={editing.subtitle ?? ""} onChange={(e) => onChange({ ...editing, subtitle: e.target.value })} /></Field>
+        <Field label="Week number"><input style={inputStyle} type="number" value={editing.weekNumber ?? ""} onChange={(e) => onChange({ ...editing, weekNumber: Number(e.target.value) })} /></Field>
+        <Field label="Start date (Day 1 opens this day)" hint="Day N opens that many days later, only on that day. Blank = all days open immediately.">
+          <input style={inputStyle} type="date" value={toDateInput(editing.startDate)} onChange={(e) => onChange({ ...editing, startDate: e.target.value })} />
+        </Field>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn-primary" style={{ flex: 1 }} onClick={() => onSave(editing)}>Save series</button>
+          <button className="btn-ghost" onClick={onCancel}>Cancel</button>
+        </div>
+      </Card>
     </div>
   );
 }
