@@ -169,7 +169,7 @@ function SeriesImporter({ onImported, onCancel }: { onImported: () => void; onCa
           <i className="ti ti-upload" /> Upload .md file
           <input type="file" accept=".md,.markdown,text/markdown,text/plain" onChange={onFile} style={{ display: "none" }} />
         </label>
-        <textarea style={{ ...inputStyle, minHeight: 240, resize: "vertical", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12.5, lineHeight: 1.5 }} value={md} onChange={(e) => setMd(e.target.value)} placeholder={"# Broken Tools and Utter Victory\nSubtitle: A study in Gideon\nWeek: 1\nStart: 2026-06-08\n\n## Day 1 — Hiding in the winepress\nPassage: Judges 6:11-16\n\n### Lesson\n...\n\n### Reflect\n- First question?\n\n### Prayer\nWrite a prayer in response to today."} />
+        <textarea style={{ ...inputStyle, minHeight: 240, resize: "vertical", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12.5, lineHeight: 1.5 }} value={md} onChange={(e) => setMd(e.target.value)} placeholder={"# Series title\nSubtitle: (optional)\nWeek: 1\nStart: 2026-06-08\n\n## Day 1 — Day title\nPassage: John 3:16-21\n\n### Lesson\nYour lesson text…\n\n### Reflect\n- A reflection question?\n\n### Prayer\nA closing prayer prompt."} />
         {err && <div style={{ fontSize: 13, color: "#b4452f", marginTop: 8 }}>{err}</div>}
         <button className="btn-primary" style={{ marginTop: 12 }} onClick={run} disabled={!md.trim() || busy}>{busy ? "Importing…" : "Import series"}</button>
       </Card>
@@ -183,7 +183,7 @@ function SeriesEditor({ editing, onChange, onSave, onCancel }: { editing: any; o
       <button className="btn-ghost" style={{ marginBottom: 14, width: "auto", padding: "8px 14px" }} onClick={onCancel}><i className="ti ti-arrow-left" /> Back</button>
       <Card>
         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{editing.id ? "Edit series" : "New series"}</div>
-        <Field label="Series title"><input style={inputStyle} value={editing.title} onChange={(e) => onChange({ ...editing, title: e.target.value })} placeholder="Broken Tools and Utter Victory" /></Field>
+        <Field label="Series title"><input style={inputStyle} value={editing.title} onChange={(e) => onChange({ ...editing, title: e.target.value })} placeholder="Series title" /></Field>
         <Field label="Subtitle"><input style={inputStyle} value={editing.subtitle ?? ""} onChange={(e) => onChange({ ...editing, subtitle: e.target.value })} /></Field>
         <Field label="Week number"><input style={inputStyle} type="number" value={editing.weekNumber ?? ""} onChange={(e) => onChange({ ...editing, weekNumber: Number(e.target.value) })} /></Field>
         <Field label="Start date (Day 1 opens this day)" hint="Day N opens that many days later, only on that day. Blank = all days open immediately.">
@@ -207,12 +207,12 @@ function DayEditor({ day, onSave, onCancel }: { day: any; onSave: (d: any) => vo
       <button className="btn-ghost" style={{ marginBottom: 14, width: "auto", padding: "8px 14px" }} onClick={onCancel}><i className="ti ti-arrow-left" /> Back</button>
       <Card>
         <Field label="Day number"><input style={inputStyle} type="number" value={d.order} onChange={(e) => set("order", Number(e.target.value))} /></Field>
-        <Field label="Day title"><input style={inputStyle} value={d.title} onChange={(e) => set("title", e.target.value)} placeholder="Hiding in the winepress" /></Field>
-        <Field label="Passage reference"><input style={inputStyle} value={d.passageRef} onChange={(e) => set("passageRef", e.target.value)} placeholder="Judges 6:11-16" /></Field>
+        <Field label="Day title"><input style={inputStyle} value={d.title} onChange={(e) => set("title", e.target.value)} placeholder="Day title" /></Field>
+        <Field label="Passage reference"><input style={inputStyle} value={d.passageRef} onChange={(e) => set("passageRef", e.target.value)} placeholder="e.g. John 3:16-21" /></Field>
         <Field label="Passage text" hint="Leave blank to pull the ESV text automatically from this reference. Type here only to override.">
           <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} value={d.passageText ?? ""} onChange={(e) => set("passageText", e.target.value)} placeholder="(blank = auto ESV)" />
         </Field>
-        <Field label="Supporting references (optional)"><input style={inputStyle} value={d.passageRefsExtra ?? ""} onChange={(e) => set("passageRefsExtra", e.target.value)} placeholder="Matthew 6:25-34" /></Field>
+        <Field label="Supporting references (optional)"><input style={inputStyle} value={d.passageRefsExtra ?? ""} onChange={(e) => set("passageRefsExtra", e.target.value)} placeholder="e.g. Romans 8:28" /></Field>
         <Field label="Lesson" hint="The full lesson text shown after the passage."><textarea style={{ ...inputStyle, minHeight: 160, resize: "vertical" }} value={d.teaching} onChange={(e) => set("teaching", e.target.value)} /></Field>
         <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Reflection questions</span>
         {d.reflectionQuestions.map((q: string, i: number) => (
