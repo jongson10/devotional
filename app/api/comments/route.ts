@@ -31,3 +31,15 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ comment: { id: comment.id } });
 }
+
+// Delete your own reply (cascades any nested replies/reactions).
+export async function DELETE(req: NextRequest) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "bad request" }, { status: 400 });
+  const own = await (prisma as any).comment.findFirst({ where: { id, userId: user.id }, select: { id: true } });
+  if (!own) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  await (prisma as any).comment.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

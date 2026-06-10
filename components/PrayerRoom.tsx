@@ -1,5 +1,5 @@
 "use client";
-import Thread, { ReactionButton } from "./Thread";
+import PostThread from "./Thread";
 
 const initialsOf = (a: string) => (a === "Anonymous" ? "?" : a.split(" ").map((s) => s[0]).slice(0, 2).join(""));
 
@@ -16,10 +16,7 @@ export default function PrayerRoom({ churchName, initial = [] }: { churchName: s
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: "var(--body)", margin: "3px 0 5px" }}>{p.body}</div>
-            <div style={{ display: "flex", gap: 4, marginLeft: -6 }}>
-              <ReactionButton icon="ti-hand-stop" type="PRAYING" count={p.praying} on={p.iPrayed} prayerId={p.id} />
-            </div>
-            <Thread comments={p.comments} target={{ prayerId: p.id }} />
+            <PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} />
           </div>
         </div>
       ))}

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 type Target = { reflectionId?: string; prayerId?: string };
 type Reply = { id: string; author: string; isMine: boolean; body: string; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean } };
 
+const PRAYER_ICON = "ti-pray";
 const initialsOf = (a: string) => (a === "Anonymous" ? "?" : a.split(" ").map((s) => s[0]).slice(0, 2).join(""));
 
 // Borderless reaction button — shared by posts (reflection/prayer) and replies (comment).
-export function ReactionButton({ icon, type, count, on, reflectionId, prayerId, commentId }: { icon: string; type: "AMEN" | "PRAYING"; count: number; on?: boolean; reflectionId?: string; prayerId?: string; commentId?: string }) {
+function ReactionButton({ icon, type, count, on, reflectionId, prayerId, commentId }: { icon: string; type: "AMEN" | "PRAYING"; count: number; on?: boolean; reflectionId?: string; prayerId?: string; commentId?: string }) {
   const [active, setActive] = useState(!!on);
   const [c, setC] = useState(count);
   async function toggle() {
@@ -22,27 +23,47 @@ export function ReactionButton({ icon, type, count, on, reflectionId, prayerId, 
   );
 }
 
-// One-level replies under a post, with a composer.
-export default function Thread({ comments = [], target }: { comments?: Reply[]; target: Target }) {
+// Action bar (Amen / Praying / Reply inline) + flat one-level replies + composer.
+export default function PostThread({ target, amen, praying, comments = [] }: { target: Target; amen?: { count: number; on?: boolean }; praying: { count: number; on?: boolean }; comments?: Reply[] }) {
   const [composing, setComposing] = useState(false);
   return (
     <div>
-      {comments.map((r) => (
-        <div key={r.id} style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <div style={{ width: 26, height: 26, flex: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>{initialsOf(r.author)}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{r.author}{r.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
-            <div style={{ fontSize: 14, lineHeight: 1.5, color: "var(--body)", margin: "1px 0 3px" }}>{r.body}</div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <ReactionButton icon="ti-flame" type="AMEN" count={r.amen} on={r.iReacted.amen} commentId={r.id} />
-              <ReactionButton icon="ti-hand-stop" type="PRAYING" count={r.praying} on={r.iReacted.praying} commentId={r.id} />
-            </div>
-          </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 2, marginLeft: -6 }}>
+        {amen && <ReactionButton icon="ti-flame" type="AMEN" count={amen.count} on={amen.on} reflectionId={target.reflectionId} prayerId={target.prayerId} />}
+        <ReactionButton icon={PRAYER_ICON} type="PRAYING" count={praying.count} on={praying.on} reflectionId={target.reflectionId} prayerId={target.prayerId} />
+        <button onClick={() => setComposing((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 6px", background: "none", border: "none", color: "var(--muted)" }}>
+          <i className="ti ti-message-circle" /> Reply
+        </button>
+      </div>
+      {comments.length > 0 && (
+        <div style={{ marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+          {comments.map((r) => <ReplyRow key={r.id} r={r} />)}
         </div>
-      ))}
-      {composing
-        ? <Composer target={target} onDone={() => setComposing(false)} />
-        : <button onClick={() => setComposing(true)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, padding: "8px 0 2px", display: "flex", alignItems: "center", gap: 5 }}><i className="ti ti-message-circle" /> Reply</button>}
+      )}
+      {composing && <Composer target={target} onDone={() => setComposing(false)} />}
+    </div>
+  );
+}
+
+function ReplyRow({ r }: { r: Reply }) {
+  const router = useRouter();
+  async function del() {
+    if (!confirm("Delete this reply?")) return;
+    try { await fetch(`/api/comments?id=${r.id}`, { method: "DELETE" }); } catch {}
+    router.refresh();
+  }
+  return (
+    <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+      <div style={{ width: 26, height: 26, flex: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>{initialsOf(r.author)}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500 }}>{r.author}{r.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: "var(--body)", margin: "1px 0 3px" }}>{r.body}</div>
+        <div style={{ display: "flex", gap: 2, alignItems: "center", marginLeft: -6 }}>
+          <ReactionButton icon="ti-flame" type="AMEN" count={r.amen} on={r.iReacted.amen} commentId={r.id} />
+          <ReactionButton icon={PRAYER_ICON} type="PRAYING" count={r.praying} on={r.iReacted.praying} commentId={r.id} />
+          {r.isMine && <button onClick={del} aria-label="Delete reply" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, padding: "4px 6px" }}><i className="ti ti-trash" /></button>}
+        </div>
+      </div>
     </div>
   );
 }

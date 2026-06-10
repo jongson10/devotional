@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Thread, { ReactionButton } from "./Thread";
+import PostThread from "./Thread";
 
 type DayData = {
   id: string; order: number; title: string;
@@ -357,19 +357,15 @@ function CommunitySheet({ myPrayer, onClose }: { myPrayer: string | null; onClos
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
                     <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{p.body}</div>
-                    <div style={{ display: "flex", gap: 4, marginLeft: -6 }}>
-                      <ReactionButton icon="ti-flame" type="AMEN" count={p.amen} on={p.iReacted?.amen} reflectionId={p.id} />
-                      <ReactionButton icon="ti-hand-stop" type="PRAYING" count={p.praying} on={p.iReacted?.praying} reflectionId={p.id} />
-                    </div>
-                    <Thread comments={p.comments} target={{ reflectionId: p.id }} />
+                    <PostThread target={{ reflectionId: p.id }} amen={{ count: p.amen, on: p.iReacted?.amen }} praying={{ count: p.praying, on: p.iReacted?.praying }} comments={p.comments} />
                   </div>
                 </div>
               ))}
             </div>
           ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
-          {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-hand-stop", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
-          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[{ icon: "ti-hand-stop", label: "Praying", count: p.praying, on: p.iPrayed, onClick: () => react("PRAYING", p.id, "prayer") }]}><Thread comments={p.comments} target={{ prayerId: p.id }} /></PostCard>))}
+          {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-pray", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
+          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} reactions={[]}><PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} /></PostCard>))}
           {!loading && tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>
       </div>
