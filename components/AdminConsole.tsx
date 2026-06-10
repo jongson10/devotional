@@ -93,6 +93,7 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
   const [series, setSeries] = useState<any[]>(initialSeries);
   const [editing, setEditing] = useState<any | null>(null);
   const [editingDay, setEditingDay] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
   function load() { fetch("/api/admin?view=series").then((r) => r.json()).then((j) => setSeries(j.series ?? [])); }
   async function saveSeries(s: any) {
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSeries", ...s }) });
@@ -108,9 +109,13 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
   }
   if (editingDay) return <DayEditor day={editingDay} onSave={saveDay} onCancel={() => setEditingDay(null)} />;
   if (editing) return <SeriesEditor editing={editing} onChange={setEditing} onSave={saveSeries} onCancel={() => setEditing(null)} />;
+  if (importing) return <SeriesImporter onImported={() => { setImporting(false); load(); }} onCancel={() => setImporting(false)} />;
   return (
     <div>
-      <button className="btn-ghost" style={{ marginBottom: 16 }} onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "" })}><i className="ti ti-plus" /> New series</button>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button className="btn-ghost" onClick={() => setEditing({ title: "", subtitle: "", weekNumber: series.length + 1, startDate: "" })}><i className="ti ti-plus" /> New series</button>
+        <button className="btn-ghost" onClick={() => setImporting(true)}><i className="ti ti-file-import" /> Import Markdown</button>
+      </div>
       {series.map((s) => (
         <Card key={s.id}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -133,6 +138,41 @@ function ContentManager({ initialSeries = [] }: { initialSeries?: any[] }) {
           <button className="btn-ghost" style={{ fontSize: 13, padding: 9, marginTop: 4 }} onClick={() => setEditingDay({ seriesId: s.id, order: s.days.length + 1, title: "", passageRef: "", passageText: "", teaching: "", reflectionQuestions: [""], prayerPrompt: "", pointsReward: 60 })}><i className="ti ti-plus" /> Add day</button>
         </Card>
       ))}
+    </div>
+  );
+}
+
+function SeriesImporter({ onImported, onCancel }: { onImported: () => void; onCancel: () => void }) {
+  const [md, setMd] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => setMd(String(r.result ?? "")); r.readAsText(f);
+  }
+  async function run() {
+    setErr(null); setBusy(true);
+    const res = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "importSeries", markdown: md }) });
+    const j = await res.json(); setBusy(false);
+    if (j.error) { setErr(j.error); return; }
+    onImported();
+  }
+  return (
+    <div>
+      <button className="btn-ghost" style={{ marginBottom: 14, width: "auto", padding: "8px 14px" }} onClick={onCancel}><i className="ti ti-arrow-left" /> Back</button>
+      <Card>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Import a series from Markdown</div>
+        <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginBottom: 12 }}>
+          Format: <code># Series Title</code> with optional <code>Subtitle:</code> / <code>Week:</code> / <code>Start:</code> lines, then a <code>## Day 1 — Title</code> per day, each with <code>Passage:</code>, <code>Also:</code>, and <code>### Lesson</code> / <code>### Reflect</code> (bulleted) / <code>### Prayer</code> sections. Leave a passage's text out to auto-pull the ESV.
+        </p>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--accent)", marginBottom: 10, cursor: "pointer" }}>
+          <i className="ti ti-upload" /> Upload .md file
+          <input type="file" accept=".md,.markdown,text/markdown,text/plain" onChange={onFile} style={{ display: "none" }} />
+        </label>
+        <textarea style={{ ...inputStyle, minHeight: 240, resize: "vertical", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12.5, lineHeight: 1.5 }} value={md} onChange={(e) => setMd(e.target.value)} placeholder={"# Broken Tools and Utter Victory\nSubtitle: A study in Gideon\nWeek: 1\nStart: 2026-06-08\n\n## Day 1 — Hiding in the winepress\nPassage: Judges 6:11-16\n\n### Lesson\n...\n\n### Reflect\n- First question?\n\n### Prayer\nWrite a prayer in response to today."} />
+        {err && <div style={{ fontSize: 13, color: "#b4452f", marginTop: 8 }}>{err}</div>}
+        <button className="btn-primary" style={{ marginTop: 12 }} onClick={run} disabled={!md.trim() || busy}>{busy ? "Importing…" : "Import series"}</button>
+      </Card>
     </div>
   );
 }

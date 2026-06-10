@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { adminSeriesView, memberActivity } from "@/lib/feed";
+import { parseSeriesMarkdown } from "@/lib/seriesImport";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,18 @@ export async function POST(req: NextRequest) {
       if (kind === "reflection") { const r = await prisma.reflection.findFirst({ where: { id, day: { series: { churchId } } } }); if (!r) return NextResponse.json({ error: "forbidden" }, { status: 403 }); await prisma.reflection.update({ where: { id }, data: { hidden: !!hidden } }); }
       else if (kind === "prayer") { const p = await prisma.prayer.findFirst({ where: { id, user: { churchId } } }); if (!p) return NextResponse.json({ error: "forbidden" }, { status: 403 }); await prisma.prayer.update({ where: { id }, data: { hidden: !!hidden } }); }
       return NextResponse.json({ ok: true });
+    }
+    case "importSeries": {
+      const parsed = parseSeriesMarkdown(String(data.markdown ?? ""));
+      if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+      const start = parsed.startDate ? new Date(parsed.startDate) : null;
+      const series = await prisma.series.create({ data: { churchId, title: parsed.title, subtitle: parsed.subtitle, weekNumber: parsed.weekNumber, startDate: start } });
+      const days = parsed.days.map((d, i) => ({
+        seriesId: series.id, order: i + 1, title: d.title || `Day ${i + 1}`, passageRef: d.passageRef, passageText: d.passageText,
+        passageRefsExtra: d.passageRefsExtra, pastorNote: d.pastorNote, teaching: d.teaching, reflectionQuestions: d.reflectionQuestions as any, prayerPrompt: d.prayerPrompt, pointsReward: d.pointsReward,
+      }));
+      if (days.length) await prisma.day.createMany({ data: days });
+      return NextResponse.json({ series: { id: series.id, title: series.title }, daysCreated: days.length });
     }
     case "setRole": {
       const { userId, role } = data;
