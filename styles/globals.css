@@ -13,7 +13,7 @@
   --glassBg: rgba(255,255,255,0.10); --glassBorder: rgba(255,255,255,0.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { font-family: 'Hanken Grotesk', system-ui, sans-serif; color: var(--ink); background: var(--gradient); background-attachment: fixed; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+html, body { font-family: 'Hanken Grotesk', system-ui, sans-serif; color: var(--ink); background: var(--gradient); min-height: 100vh; -webkit-font-smoothing: antialiased; }
 body::before, body::after { content: ""; position: fixed; border-radius: 50%; filter: blur(48px); pointer-events: none; z-index: 0; }
 body::before { top: -60px; left: -50px; width: 240px; height: 240px; background: var(--blob1); }
 body::after { bottom: 40px; right: -60px; width: 260px; height: 260px; background: var(--blob2); }
