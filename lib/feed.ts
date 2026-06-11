@@ -190,7 +190,7 @@ export async function devotionalPayload(user: DevotionalUser, dayId: string | nu
       seriesTitle: day.series.title, weekNumber: day.series.weekNumber, esv, esvCopyright: esv ? ESV_COPYRIGHT : null, intro,
     },
     progress: { step: progress?.step ?? 0, completed: progress?.completed ?? false },
-    myReflections: myReflections.map((r) => ({ questionIndex: r.questionIndex, body: r.body })),
+    myReflections: myReflections.map((r) => ({ questionIndex: r.questionIndex, body: r.body, shared: r.shared })),
     myPrayer: myPrayer ? { body: myPrayer.body, shared: myPrayer.shared } : null,
   };
 }

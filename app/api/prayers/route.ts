@@ -21,3 +21,12 @@ export async function GET(req: NextRequest) {
   const dayId = new URL(req.url).searchParams.get("dayId") || undefined;
   return NextResponse.json({ prayers: await prayerRoom(user, dayId) });
 }
+export async function DELETE(req: NextRequest) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const sp = new URL(req.url).searchParams;
+  const id = sp.get("id"); const dayId = sp.get("dayId");
+  if (id) { await prisma.prayer.deleteMany({ where: { id, userId: user.id } }); return NextResponse.json({ ok: true }); }
+  if (dayId) { await prisma.prayer.deleteMany({ where: { userId: user.id, dayId } }); return NextResponse.json({ ok: true }); }
+  return NextResponse.json({ error: "bad request" }, { status: 400 });
+}

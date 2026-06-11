@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import PostThread from "./Thread";
 import { Avatar } from "./Avatar";
 
@@ -21,6 +22,12 @@ export default function ReflectionsFeed({ churchName, initial = [] }: { churchNa
 }
 
 function Post({ p, last }: { p: any; last: boolean }) {
+  const router = useRouter();
+  async function del() {
+    if (!confirm("Delete this reflection? This can't be undone.")) return;
+    try { await fetch(`/api/reflections?id=${p.id}`, { method: "DELETE" }); } catch {}
+    router.refresh();
+  }
   return (
     <div style={{ display: "flex", gap: 10 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
@@ -28,7 +35,10 @@ function Post({ p, last }: { p: any; last: boolean }) {
         {!last && <div style={{ width: 2, flex: 1, background: "var(--line)", marginTop: 4, minHeight: 8 }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0, paddingBottom: last ? 4 : 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center" }}>
+          <span style={{ flex: 1, minWidth: 0 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</span>
+          {p.isMine && <button onClick={del} aria-label="Delete reflection" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: "0 2px", flex: "none" }}><i className="ti ti-trash" /></button>}
+        </div>
         <div style={{ fontSize: 15, lineHeight: 1.55, color: "var(--body)", margin: "3px 0 5px" }}>{p.body}</div>
         <PostThread target={{ reflectionId: p.id }} amen={{ count: p.amen, on: p.iReacted?.amen }} praying={{ count: p.praying, on: p.iReacted?.praying }} comments={p.comments} />
       </div>

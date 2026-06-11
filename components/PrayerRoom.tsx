@@ -1,9 +1,16 @@
 "use client";
+import { useRouter } from "next/navigation";
 import PostThread from "./Thread";
 import { Avatar } from "./Avatar";
 
 export default function PrayerRoom({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
   const prayers = initial;
+  const router = useRouter();
+  async function del(id: string) {
+    if (!confirm("Delete this prayer? This can't be undone.")) return;
+    try { await fetch(`/api/prayers?id=${id}`, { method: "DELETE" }); } catch {}
+    router.refresh();
+  }
   return (
     <div style={{ padding: "30px 20px" }}>
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
@@ -13,7 +20,10 @@ export default function PrayerRoom({ churchName, initial = [] }: { churchName: s
         <div key={p.id} style={{ display: "flex", gap: 10, paddingBottom: 18, marginBottom: 18, borderBottom: i === prayers.length - 1 ? "none" : "1px solid var(--line)" }}>
           <Avatar name={p.author} image={p.image} size={34} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center" }}>
+              <span style={{ flex: 1, minWidth: 0 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</span>
+              {p.isMine && <button onClick={() => del(p.id)} aria-label="Delete prayer" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: "0 2px", flex: "none" }}><i className="ti ti-trash" /></button>}
+            </div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: "var(--body)", margin: "3px 0 5px" }}>{p.body}</div>
             <PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} />
           </div>

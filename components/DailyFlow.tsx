@@ -61,7 +61,7 @@ type Initial =
   | { day: any; progress: { step: number; completed: boolean }; myReflections: { questionIndex: number; body: string }[]; myPrayer: { body: string; shared: boolean } | null };
 
 type DerivedState = {
-  err: string | null; data?: DayData; reflectAnswers?: Record<number, string[]>;
+  err: string | null; data?: DayData; reflectAnswers?: Record<number, string[]>; reflectShared?: Record<number, boolean>;
   prayerText?: string | null; prayerShare?: boolean; revealed?: { passage: boolean; lesson: boolean };
   stage?: Stage; activeQ?: number; alreadyDone?: boolean;
 };
@@ -77,11 +77,12 @@ function deriveInitialState(initial: Initial): DerivedState {
 
   const savedStep: number = j.progress?.step ?? 0;
   const completed: boolean = j.progress?.completed ?? false;
-  const savedReflections: { questionIndex: number; body: string }[] = j.myReflections ?? [];
+  const savedReflections: { questionIndex: number; body: string; shared?: boolean }[] = j.myReflections ?? [];
   const savedPrayer: { body: string; shared: boolean } | null = j.myPrayer ?? null;
 
   const reflectAnswers: Record<number, string[]> = {};
-  for (const r of savedReflections) reflectAnswers[r.questionIndex] = [r.body];
+  const reflectShared: Record<number, boolean> = {};
+  for (const r of savedReflections) { reflectAnswers[r.questionIndex] = [r.body]; reflectShared[r.questionIndex] = r.shared !== false; }
   const revealed = savedStep >= 1 ? { passage: true, lesson: true } : { passage: false, lesson: false };
 
   let stage: Stage; let alreadyDone = false;
@@ -97,7 +98,7 @@ function deriveInitialState(initial: Initial): DerivedState {
   const activeQ = Math.min(firstUnanswered, Math.max(0, d.reflectionQuestions.length - 1));
   if (savedStep === 1 && answered.size > 0 && answered.size < d.reflectionQuestions.length) stage = "reflect";
 
-  return { err: null, data: d, reflectAnswers, prayerText: savedPrayer?.body ?? null, prayerShare: !!savedPrayer?.shared, revealed, stage, activeQ, alreadyDone };
+  return { err: null, data: d, reflectAnswers, reflectShared, prayerText: savedPrayer?.body ?? null, prayerShare: !!savedPrayer?.shared, revealed, stage, activeQ, alreadyDone };
 }
 
 export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { reflections: boolean; prayer: boolean; community: boolean } }) {
@@ -110,6 +111,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
   const [err, setErr] = useState<string | null>(init.err);
   const [stage, setStage] = useState<Stage>(init.stage ?? "loading");
   const [reflectAnswers, setReflectAnswers] = useState<Record<number, string[]>>(init.reflectAnswers ?? {});
+  const [reflectShared, setReflectShared] = useState<Record<number, boolean>>(init.reflectShared ?? {});
   const [activeQ, setActiveQ] = useState(init.activeQ ?? 0);
   const [draft, setDraft] = useState("");
   const [prayerShare, setPrayerShare] = useState(init.prayerShare ?? false);
@@ -146,8 +148,25 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
   const accent = "var(--accent)";
   const allReflectionsAnswered = data.reflectionQuestions.length > 0 && data.reflectionQuestions.every((_, i) => (reflectAnswers[i]?.length ?? 0) > 0);
 
-  async function saveReflection(qIndex: number, body: string) {
-    await fetch("/api/reflections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, questionIndex: qIndex, body }) });
+  async function saveReflection(qIndex: number, body: string, shared?: boolean) {
+    await fetch("/api/reflections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, questionIndex: qIndex, body, shared: shared ?? (reflectShared[qIndex] ?? true) }) });
+  }
+  function toggleShareReflection(q: number) {
+    const body = (reflectAnswers[q] ?? [])[0]; if (!body) return;
+    const next = !(reflectShared[q] ?? true);
+    setReflectShared((s) => ({ ...s, [q]: next }));
+    saveReflection(q, body, next);
+  }
+  async function deleteReflection(q: number, j: number) {
+    if (!confirm("Delete this reflection? It will also disappear from the community feed. This can't be undone.")) return;
+    await fetch(`/api/reflections?dayId=${data!.id}&questionIndex=${q}`, { method: "DELETE" });
+    setReflectAnswers((prev) => { const arr = [...(prev[q] ?? [])]; arr.splice(j, 1); return { ...prev, [q]: arr }; });
+  }
+  async function deletePrayer() {
+    if (!confirm(`Delete your prayer?${prayerShare ? " It will also be removed from the prayer room." : ""} This can't be undone.`)) return;
+    await fetch(`/api/prayers?dayId=${data!.id}`, { method: "DELETE" });
+    setPrayerText(null); setEditingPrayer(false);
+    if (stage === "complete") setStage("prayer");
   }
   async function savePrayer(body: string, shared: boolean) {
     await fetch("/api/prayers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, body, shared, anonymous: false }) });
@@ -162,7 +181,8 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
     const v = draft.trim(); if (!v) return;
     const arr = reflectAnswers[activeQ] ?? [];
     setReflectAnswers({ ...reflectAnswers, [activeQ]: [...arr, v] });
-    saveReflection(activeQ, v); setDraft("");
+    setReflectShared((s) => ({ ...s, [activeQ]: true }));
+    saveReflection(activeQ, v, true); setDraft("");
     if (activeQ + 1 < data!.reflectionQuestions.length) setActiveQ(activeQ + 1);
     else { recordStep(data!.id, 2); setStage("prayer"); setActiveQ(0); }
   }
@@ -250,6 +270,8 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
                         <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 4 }}>
                           <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>{a}</div>
                           <button onClick={() => { setEditingRef({ q: i, j }); setEditDraft(a); }} aria-label="Edit" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-pencil" /></button>
+                          <button onClick={() => toggleShareReflection(i)} aria-label={(reflectShared[i] ?? true) ? "Shared to the community feed — tap to make private" : "Private — tap to share"} title={(reflectShared[i] ?? true) ? "Shared — tap to make private" : "Private — tap to share"} style={{ background: "none", border: "none", color: (reflectShared[i] ?? true) ? accent : "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className={`ti ${(reflectShared[i] ?? true) ? "ti-users" : "ti-lock"}`} /></button>
+                          <button onClick={() => deleteReflection(i, j)} aria-label="Delete reflection" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-trash" /></button>
                         </div>
                       )
                     ))}
@@ -274,6 +296,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                 <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>{prayerText}{prayerShare && (<div style={{ fontSize: 11, color: accent, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-users" /> Shared to prayer room</div>)}</div>
                 <button onClick={() => { setEditingPrayer(true); setEditDraft(prayerText); }} aria-label="Edit prayer" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-pencil" /></button>
+                <button onClick={deletePrayer} aria-label="Delete prayer" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-trash" /></button>
               </div>
             )}
             {editingPrayer && (
