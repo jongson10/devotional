@@ -23,9 +23,9 @@ export default function Leaderboard({ initialRows = [] }: { initialRows?: Row[] 
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 6 }}>Leaderboard</h1>
       <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18, lineHeight: 1.5 }}>A gentle nudge to keep showing up — not a competition. Walk your own pace.</p>
 
-      <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 18 }}>
+      <div style={{ display: "flex", gap: 6, background: "var(--chip)", borderRadius: 12, padding: 4, marginBottom: 18 }}>
         {SORTS.map((s) => (
-          <button key={s.key} onClick={() => setSort(s.key)} style={{ flex: 1, border: "none", background: sort === s.key ? "#fff" : "transparent", color: sort === s.key ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+          <button key={s.key} onClick={() => setSort(s.key)} style={{ flex: 1, border: "none", background: sort === s.key ? "var(--glassBg)" : "transparent", color: sort === s.key ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
             <i className={`ti ${s.icon}`} /> {s.label}
           </button>
         ))}
@@ -40,7 +40,7 @@ export default function Leaderboard({ initialRows = [] }: { initialRows?: Row[] 
           return (
             <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, background: r.isMe ? "var(--glassBg)" : "transparent", border: `1px solid ${r.isMe ? "var(--accent)" : "var(--line)"}` }}>
               <div style={{ width: 24, textAlign: "center", fontSize: 14, fontWeight: 600, color: i < 3 ? "var(--accent)" : "var(--muted)" }}>{i + 1}</div>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, flex: "none" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, flex: "none" }}>
                 {r.name.slice(0, 1).toUpperCase()}
               </div>
               <div style={{ flex: 1, fontSize: 15, fontWeight: r.isMe ? 600 : 500 }}>{r.name}{r.isMe && <span style={{ color: "var(--accent)", fontWeight: 400, fontSize: 13 }}> · you</span>}</div>

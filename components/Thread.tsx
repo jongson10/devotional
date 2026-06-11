@@ -78,7 +78,7 @@ function Composer({ target, onDone }: { target: Target; onDone: () => void }) {
       <textarea autoFocus rows={1} value={draft} placeholder="Reply…" onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         style={{ flex: 1, resize: "none", fontSize: 14, lineHeight: 1.45, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--glassBg)", minHeight: 20, maxHeight: 120 }} />
-      <button onClick={send} disabled={!draft.trim() || busy} aria-label="Send reply" style={{ width: 32, height: 32, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", opacity: draft.trim() && !busy ? 1 : 0.5 }}><i className="ti ti-arrow-up" /></button>
+      <button onClick={send} disabled={!draft.trim() || busy} aria-label="Send reply" style={{ width: 32, height: 32, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", opacity: draft.trim() && !busy ? 1 : 0.5 }}><i className="ti ti-arrow-up" /></button>
     </div>
   );
 }

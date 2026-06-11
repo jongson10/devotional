@@ -8,7 +8,7 @@ export function Avatar({ name, image, size = 34 }: { name: string; image?: strin
     return <img src={image} alt="" width={size} height={size} style={{ width: size, height: size, flex: "none", borderRadius: "50%", objectFit: "cover", background: "var(--glassBg)" }} />;
   }
   return (
-    <div style={{ width: size, height: size, flex: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: Math.round(size * 0.38), fontWeight: 500 }}>
+    <div style={{ width: size, height: size, flex: "none", borderRadius: "50%", background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: Math.round(size * 0.38), fontWeight: 500 }}>
       {initialsOf(name)}
     </div>
   );

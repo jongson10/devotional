@@ -30,8 +30,8 @@ export default function Community({ churchName, initialRows = [], initialActivit
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 6 }}>Community</h1>
       <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18, lineHeight: 1.5 }}>A gentle encouragement to keep showing up — not a competition. Walk your own pace.</p>
-      <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 18 }}>
-        {SORTS.map((s) => (<button key={s.key} onClick={() => setSort(s.key)} style={{ flex: 1, border: "none", background: sort === s.key ? "#fff" : "transparent", color: sort === s.key ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><i className={`ti ${s.icon}`} /> {s.label}</button>))}
+      <div style={{ display: "flex", gap: 6, background: "var(--chip)", borderRadius: 12, padding: 4, marginBottom: 18 }}>
+        {SORTS.map((s) => (<button key={s.key} onClick={() => setSort(s.key)} style={{ flex: 1, border: "none", background: sort === s.key ? "var(--glassBg)" : "transparent", color: sort === s.key ? "var(--ink)" : "var(--muted)", fontSize: 13, fontWeight: 500, padding: 9, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><i className={`ti ${s.icon}`} /> {s.label}</button>))}
       </div>
       {sorted.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>No one's on the board yet.</div>}
       <div style={{ display: "flex", flexDirection: "column" }}>

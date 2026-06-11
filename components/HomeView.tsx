@@ -6,7 +6,7 @@ type DayStatus = "open" | "future" | "missed" | "always";
 type Day = { id: string; order: number; title: string; passageRef: string; pointsReward: number; done: boolean; lateDone: boolean; status: DayStatus; openable: boolean; unlocksOn: string | null; };
 type SeriesData = { id: string; title: string; subtitle: string | null; weekNumber: number | null; days: Day[]; todayCardId: string | null };
 
-const LATE = "#4F9D69";
+const LATE = "var(--sage)";
 
 export default function HomeView({ name, churchName, seriesList, streak, points }: { name: string; churchName: string; seriesList: SeriesData[]; streak: number; points: number; }) {
   const { resolved } = useTheme();
@@ -20,9 +20,9 @@ export default function HomeView({ name, churchName, seriesList, streak, points 
           <div style={{ fontSize: 13, color: "var(--muted)" }}>{greeting}</div>
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.015em", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
         </div>
-        <div style={{ display: "flex", gap: 18, flex: "none" }}>
-          <Hero icon="ti-flame" value={streak} label="streak" />
-          <Hero icon="ti-star" value={points} label="stars" />
+        <div style={{ display: "flex", gap: 14, flex: "none" }}>
+          <Hero icon="ti-flame" value={streak} label="Current streak" />
+          <Hero icon="ti-star" value={points} label="Stars earned" />
         </div>
       </header>
 
@@ -38,47 +38,51 @@ function SeriesSection({ series }: { series: SeriesData }) {
     <div style={{ marginBottom: 30 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
         <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", flex: 1, minWidth: 0 }}>{series.title}</div>
-        {series.days.length > 0 && <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", flex: "none" }}>{doneCount} / {series.days.length}</div>}
+        {series.days.length > 0 && <div style={{ fontSize: 11, color: "var(--muted)", flex: "none" }}>{doneCount} of {series.days.length} complete</div>}
       </div>
-      {(series.subtitle || series.weekNumber) && <div className="label" style={{ marginBottom: 14 }}>{series.weekNumber ? `Week ${series.weekNumber}` : ""}{series.weekNumber && series.subtitle ? " · " : ""}{series.subtitle ?? ""}</div>}
-      {!series.subtitle && !series.weekNumber && <div style={{ marginBottom: 14 }} />}
+      {(series.subtitle || series.weekNumber) && <div className="label" style={{ marginBottom: 10 }}>{series.weekNumber ? `Week ${series.weekNumber}` : ""}{series.weekNumber && series.subtitle ? " · " : ""}{series.subtitle ?? ""}</div>}
+      {!series.subtitle && !series.weekNumber && <div style={{ marginBottom: 10 }} />}
+      {series.days.length > 0 && (
+        <div role="progressbar" aria-valuemin={0} aria-valuemax={series.days.length} aria-valuenow={doneCount} aria-label={`${series.title} progress`} style={{ height: 3, background: "var(--line)", borderRadius: 2, marginBottom: 10 }}>
+          <div style={{ width: `${Math.round((doneCount / series.days.length) * 100)}%`, height: 3, background: "var(--accent)", borderRadius: 2, transition: "width .4s ease" }} />
+        </div>
+      )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {series.days.map((d) => {
           const isTodayCard = series.todayCardId === d.id;
           if (isTodayCard) {
             return (
-              <Link key={d.id} href={`/today?dayId=${d.id}`} style={{ background: "var(--dark)", borderRadius: 18, padding: "16px 17px", color: "#fff" }}>
+              <Link key={d.id} href={`/today?dayId=${d.id}`} style={{ background: "var(--parchment)", border: "1px solid var(--parchmentBorder)", borderRadius: 16, padding: "16px 17px", color: "var(--ink)", marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--darkSub)" }}>Day {d.order} · today</span>
-                  <span style={{ fontSize: 11, color: "var(--darkSub)" }}><i className="ti ti-star" /> +{d.pointsReward}</span>
+                  <span style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent)", fontWeight: 600 }}>Day {d.order} · today</span>
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}><i className="ti ti-star" aria-hidden="true" /> +{d.pointsReward}</span>
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 3 }}>{d.title}</div>
-                <div style={{ fontSize: 13, color: "var(--darkSub)", marginBottom: 13 }}>{d.passageRef}</div>
-                <div style={{ background: d.done ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.95)", color: d.done ? "#fff" : "var(--dark)", borderRadius: 11, padding: 11, textAlign: "center", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  {d.done ? <><i className="ti ti-circle-check" /> Completed</> : <>Begin <i className="ti ti-arrow-right" /></>}
+                <div style={{ fontSize: 13, color: "var(--soft)", marginBottom: 14 }}>{d.passageRef}</div>
+                <div style={{ background: d.done ? "var(--chip)" : "var(--accent)", color: d.done ? "var(--soft)" : "var(--onAccent)", borderRadius: 11, padding: 11, textAlign: "center", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  {d.done ? <><i className="ti ti-circle-check" aria-hidden="true" /> Completed</> : <>Begin <i className="ti ti-arrow-right" aria-hidden="true" /></>}
                 </div>
               </Link>
             );
           }
           const locked = !d.openable && !d.done;
           const isFuture = d.status === "future" && !d.done;
-          const dotColor = d.done ? (d.lateDone ? LATE : "var(--accent)") : "transparent";
           const sub = d.done ? (d.lateDone ? "Completed late" : d.passageRef) : isFuture && d.unlocksOn ? `Opens ${new Date(d.unlocksOn).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })}` : d.passageRef;
           const inner = (
             <>
-              <div style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", background: dotColor, border: d.done ? "none" : "1.5px solid var(--line)", color: d.done ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500 }}>
-                {d.done ? <i className="ti ti-check" /> : d.order}
+              <div style={{ width: 26, height: 26, flex: "none", borderRadius: "50%", background: d.done ? "var(--sageBg)" : "transparent", border: d.done ? "none" : "1.5px solid var(--line)", color: d.done ? "var(--sage)" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500 }}>
+                {d.done ? <i className="ti ti-check" aria-hidden="true" /> : d.order}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 500, color: d.done ? "var(--ink)" : "var(--muted)" }}>{d.title}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: d.done ? "var(--ink)" : "var(--muted)" }}>{d.title}</div>
                 <div style={{ fontSize: 12, color: d.lateDone ? LATE : "var(--muted)" }}>{sub}</div>
               </div>
-              <i className={`ti ${d.done ? "ti-chevron-right" : locked ? "ti-lock" : "ti-chevron-right"}`} style={{ color: "var(--muted)" }} />
+              <i className={`ti ${locked ? "ti-lock" : "ti-chevron-right"}`} style={{ color: "var(--muted)", opacity: 0.6 }} aria-hidden="true" />
             </>
           );
-          const style: React.CSSProperties = { borderRadius: 18, padding: "14px 16px", display: "flex", alignItems: "center", gap: 13, opacity: locked ? 0.55 : 1 };
-          return (d.openable || d.done) ? <Link key={d.id} href={`/today?dayId=${d.id}`} className="glass" style={style}>{inner}</Link> : <div key={d.id} className="glass" style={style}>{inner}</div>;
+          const style: React.CSSProperties = { borderBottom: "1px solid var(--line)", padding: "12px 2px", display: "flex", alignItems: "center", gap: 11, opacity: locked ? 0.55 : 1 };
+          return (d.openable || d.done) ? <Link key={d.id} href={`/today?dayId=${d.id}`} style={style}>{inner}</Link> : <div key={d.id} aria-disabled="true" style={style}>{inner}</div>;
         })}
         {series.days.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 18, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>No days yet.</div>)}
       </div>
@@ -88,9 +92,8 @@ function SeriesSection({ series }: { series: SeriesData }) {
 
 function Hero({ icon, value, label }: { icon: string; value: number; label: string }) {
   return (
-    <div style={{ textAlign: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--accent)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}><i className={`ti ${icon}`} style={{ fontSize: 18 }} /> {value}</div>
-      <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
+    <div aria-label={`${label}: ${value}`} style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--accent)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>
+      <i className={`ti ${icon}`} style={{ fontSize: 16 }} aria-hidden="true" /> {value}
     </div>
   );
 }

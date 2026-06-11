@@ -33,9 +33,9 @@ export default function AdminConsole({ initialSeries = [], initialChurch = null 
           <Link href="/" style={{ fontSize: 13, color: "var(--accent)" }}>Back to app <i className="ti ti-arrow-right" /></Link>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 6, background: "var(--glassBg)", borderRadius: 12, padding: 4, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 6, background: "var(--chip)", borderRadius: 12, padding: 4, marginBottom: 20 }}>
         {(["content", "members", "activity", "moderation", "settings"] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "#fff" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 12, fontWeight: 500, padding: "9px 4px", borderRadius: 9, textTransform: "capitalize" }}>{t}</button>
+          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, border: "none", background: tab === t ? "var(--glassBg)" : "transparent", color: tab === t ? "var(--ink)" : "var(--muted)", fontSize: 12, fontWeight: 500, padding: "9px 4px", borderRadius: 9, textTransform: "capitalize" }}>{t}</button>
         ))}
       </div>
       {tab === "content" && <ContentManager initialSeries={initialSeries} />}
@@ -59,7 +59,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
     </label>
   );
 }
-const inputStyle: React.CSSProperties = { background: "rgba(255,255,255,0.6)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", fontSize: 14, width: "100%" };
+const inputStyle: React.CSSProperties = { background: "var(--chip)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", fontSize: 14, width: "100%" };
 
 function toDateInput(v: any): string {
   if (!v) return "";

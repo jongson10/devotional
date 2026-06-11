@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { navConfig } from "@/lib/feed";
 import TopBar from "@/components/TopBar";
 export const metadata: Metadata = { title: "Daily Devotional", description: "Walk through Sunday's message, one day at a time.", manifest: "/manifest.json" };
-export const viewport: Viewport = { themeColor: "#FAF3E4", width: "device-width", initialScale: 1, maximumScale: 1 };
+export const viewport: Viewport = { themeColor: "#FAFAF8", width: "device-width", initialScale: 1 };
 export const dynamic = "force-dynamic";
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();

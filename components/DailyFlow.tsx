@@ -158,8 +158,8 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
   }
 
   return (
-    <div style={{ position: "relative", minHeight: "calc(100vh - 50px)" }}>
-      <div style={{ padding: "18px 18px 120px" }}>
+    <div style={{ position: "relative", minHeight: "100vh" }}>
+      <div style={{ padding: "18px 18px 190px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
           <div>
             <div className="label">Day {data.order}{data.weekNumber ? ` · Week ${data.weekNumber}` : ""}</div>
@@ -212,7 +212,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
                       editingRef && editingRef.q === i && editingRef.j === j ? (
                         <div key={j} className="glass" style={{ borderRadius: 12, padding: "6px 6px 6px 12px", display: "flex", alignItems: "flex-end", gap: 6, marginTop: 6 }}>
                           <textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEditReflection(i, j); } if (e.key === "Escape") setEditingRef(null); }} style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.5, padding: "6px 0", minHeight: 22 }} />
-                          <button onClick={() => commitEditReflection(i, j)} aria-label="Save" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><i className="ti ti-check" /></button>
+                          <button onClick={() => commitEditReflection(i, j)} aria-label="Save" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center" }}><i className="ti ti-check" /></button>
                         </div>
                       ) : (
                         <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 4 }}>
@@ -247,14 +247,14 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
             {editingPrayer && (
               <div className="glass" style={{ borderRadius: 12, padding: "6px 6px 6px 12px", display: "flex", alignItems: "flex-end", gap: 6 }}>
                 <textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEditPrayer(); } if (e.key === "Escape") setEditingPrayer(false); }} style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.5, padding: "6px 0", minHeight: 22 }} />
-                <button onClick={commitEditPrayer} aria-label="Save prayer" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><i className="ti ti-check" /></button>
+                <button onClick={commitEditPrayer} aria-label="Save prayer" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center" }}><i className="ti ti-check" /></button>
               </div>
             )}
           </section>
         )}
       </div>
 
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 8, maxWidth: 440, margin: "0 auto", padding: "12px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 8, maxWidth: 440, margin: "0 auto", padding: "12px 16px calc(84px + env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>
         {!revealed.passage && (<button className="btn-ghost btn-dock" onClick={revealPassage}><i className="ti ti-book-2" /> Read the passage</button>)}
         {revealed.passage && !revealed.lesson && (<button className="btn-ghost btn-dock" onClick={revealLesson}><i className="ti ti-arrow-down" /> Continue to lesson</button>)}
         {revealed.lesson && stage === "lesson" && (<button className="btn-ghost btn-dock" onClick={() => setStage("reflect")}><i className="ti ti-pencil" /> Reflect</button>)}
@@ -293,7 +293,7 @@ function InputBar({ value, setValue, onSend, placeholder }: { value: string; set
   return (
     <div className="glass" style={{ width: "100%", borderRadius: 24, padding: "6px 6px 6px 16px", display: "flex", alignItems: "flex-end", gap: 8 }}>
       <textarea ref={ref} rows={1} value={value} placeholder={placeholder} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }} style={{ flex: 1, resize: "none", fontSize: 15, lineHeight: 1.45, padding: "8px 0", minHeight: 22, maxHeight: 140, overflowY: "auto" }} />
-      <button onClick={onSend} aria-label="Send" disabled={!hasText} style={{ width: 36, height: 36, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", opacity: hasText ? 1 : 0.5, transition: "opacity .2s" }}><i className="ti ti-arrow-up" /></button>
+      <button onClick={onSend} aria-label="Send" disabled={!hasText} style={{ width: 36, height: 36, flex: "none", border: "none", borderRadius: "50%", background: "var(--accent)", color: "var(--onAccent)", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", opacity: hasText ? 1 : 0.5, transition: "opacity .2s" }}><i className="ti ti-arrow-up" /></button>
     </div>
   );
 }
@@ -302,7 +302,7 @@ function CompleteOverlay({ streak, points, onSeeFeed, onDone }: { streak: number
   const [phase, setPhase] = useState(0);
   useEffect(() => { const t1 = setTimeout(() => setPhase(1), 120); const t2 = setTimeout(() => setPhase(2), 1100); const t3 = setTimeout(() => setPhase(3), 1500); return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); }; }, []);
   return (
-    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--glassBg)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 20 }}>
+    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--gradient)", zIndex: 20 }}>
       <div style={{ position: "relative" }}>
         <svg width="120" height="120" viewBox="0 0 120 120">
           <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" strokeWidth="6" />

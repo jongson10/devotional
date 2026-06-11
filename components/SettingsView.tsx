@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
 import { Avatar } from "./Avatar";
 
-const inputStyle: React.CSSProperties = { background: "rgba(255,255,255,0.6)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", fontSize: 14, width: "100%" };
+const inputStyle: React.CSSProperties = { background: "var(--chip)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", fontSize: 14, width: "100%" };
 const THEMES: { key: "dawn" | "night" | "auto"; label: string; icon: string }[] = [
   { key: "dawn", label: "Light", icon: "ti-sun" },
   { key: "night", label: "Dark", icon: "ti-moon" },

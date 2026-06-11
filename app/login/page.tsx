@@ -17,7 +17,7 @@ function LoginInner() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 28px" }}>
       <div style={{ marginBottom: 32 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, marginBottom: 18 }}><i className="ti ti-sunrise" /></div>
+        <div style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, marginBottom: 18 }}><i className="ti ti-sunrise" /></div>
         <h1 style={{ fontSize: 27, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.15 }}>Daily Devotional</h1>
         <p style={{ fontSize: 15, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>Walk through Sunday's message, one day at a time.</p>
       </div>
