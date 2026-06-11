@@ -1,3 +1,4 @@
+import { cache } from "react";
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Nodemailer from "next-auth/providers/nodemailer";
@@ -23,11 +24,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     },
   },
 }));
-export async function requireUser() {
+// Cached per request so the layout and the page share one auth() call.
+export const requireUser = cache(async () => {
   const session = await auth();
   if (!session?.user) return null;
   return session.user as { id: string; email?: string | null; name?: string | null; role: "MEMBER" | "ADMIN" | "OWNER"; churchId: string | null; };
-}
+});
 export async function requireAdmin() {
   const u = await requireUser();
   if (!u || (u.role !== "ADMIN" && u.role !== "OWNER")) return null;

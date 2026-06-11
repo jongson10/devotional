@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { getStreak, getStreaksBatch, rebuildStreakFromHistory, type StreakState } from "@/lib/streaks";
 import { fetchEsvPassage, ESV_COPYRIGHT } from "@/lib/esv";
@@ -152,11 +153,12 @@ export async function adminSeriesView(user: FeedUser) {
 }
 
 // Which feature tabs are enabled for the church (drives the nav).
-export async function navConfig(user: FeedUser): Promise<{ reflections: boolean; prayer: boolean; community: boolean }> {
+// Cached per request so the layout and a page share one query.
+export const navConfig = cache(async (user: FeedUser): Promise<{ reflections: boolean; prayer: boolean; community: boolean }> => {
   if (!user.churchId) return { reflections: true, prayer: true, community: true };
   const c: any = await prisma.church.findUnique({ where: { id: user.churchId }, select: { reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true } });
   return { reflections: c?.reflectionFeedEnabled ?? true, prayer: c?.prayerRoomEnabled ?? true, community: c?.gamificationEnabled ?? true };
-}
+});
 
 // Full payload for one day of the devotional flow: the day content (with ESV fallback),
 // the user's saved progress, reflections, and prayer. Shared by the API route and the

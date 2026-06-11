@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { streakState, navConfig } from "@/lib/feed";
+import { streakState } from "@/lib/feed";
 import { dayStatus, unlockDate } from "@/lib/unlock";
 import HomeView from "@/components/HomeView";
-import TopBar from "@/components/TopBar";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,6 @@ export default async function HomePage() {
     user.churchId ? prisma.series.findMany({ where: { churchId: user.churchId, published: true }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve([]),
     streakState(user.id),
   ]);
-  const nav = await navConfig(user);
   // Record this visit (best-effort; lastSeenAt drives the "last active" lists).
   prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } as any }).catch(() => {});
   const tz = church?.timezone || "UTC";
@@ -43,10 +41,5 @@ export default async function HomePage() {
     return { id: series.id, title: series.title, subtitle: series.subtitle, weekNumber: series.weekNumber, days, todayCardId: todayCard?.id ?? null };
   });
 
-  return (
-    <>
-      <TopBar isAdmin={isAdmin} nav={nav} />
-      <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesList={seriesList} streak={streak.streak} points={streak.points} />
-    </>
-  );
+  return <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesList={seriesList} streak={streak.streak} points={streak.points} />;
 }

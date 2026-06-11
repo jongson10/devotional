@@ -7,7 +7,7 @@ type Target = { reflectionId?: string; prayerId?: string };
 type Reply = { id: string; author: string; isMine: boolean; body: string; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean } };
 
 // Borderless reaction button — shared by posts (reflection/prayer) and replies (comment).
-function ReactionButton({ icon, type, count, on, reflectionId, prayerId, commentId }: { icon?: string; type: "AMEN" | "PRAYING"; count: number; on?: boolean; reflectionId?: string; prayerId?: string; commentId?: string }) {
+function ReactionButton({ type, count, on, reflectionId, prayerId, commentId }: { type: "AMEN" | "PRAYING"; count: number; on?: boolean; reflectionId?: string; prayerId?: string; commentId?: string }) {
   const [active, setActive] = useState(!!on);
   const [c, setC] = useState(count);
   async function toggle() {
@@ -16,7 +16,8 @@ function ReactionButton({ icon, type, count, on, reflectionId, prayerId, comment
   }
   return (
     <button onClick={toggle} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 6px", background: "none", border: "none", color: active ? "var(--accent)" : "var(--muted)" }}>
-      {type === "PRAYING" ? <PrayerHands size={14} /> : <i className={`ti ${icon}`} />}{c > 0 ? ` ${c}` : ""}
+      {type === "PRAYING" ? <PrayerHands size={14} /> : <i className="ti ti-heart" />}
+      <span>{type === "PRAYING" ? "Praying" : "Amen"}</span>{c > 0 ? <span style={{ marginLeft: 1 }}>{c}</span> : null}
     </button>
   );
 }
@@ -27,7 +28,7 @@ export default function PostThread({ target, amen, praying, comments = [] }: { t
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 2, marginLeft: -6 }}>
-        {amen && <ReactionButton icon="ti-flame" type="AMEN" count={amen.count} on={amen.on} reflectionId={target.reflectionId} prayerId={target.prayerId} />}
+        {amen && <ReactionButton type="AMEN" count={amen.count} on={amen.on} reflectionId={target.reflectionId} prayerId={target.prayerId} />}
         <ReactionButton type="PRAYING" count={praying.count} on={praying.on} reflectionId={target.reflectionId} prayerId={target.prayerId} />
         <button onClick={() => setComposing((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 6px", background: "none", border: "none", color: "var(--muted)" }}>
           <i className="ti ti-message-circle" /> Reply
@@ -51,7 +52,7 @@ function ReplyRow({ r }: { r: Reply }) {
       <div style={{ fontSize: 13, fontWeight: 600 }}>{r.author}{r.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
       <div style={{ fontSize: 14, lineHeight: 1.5, color: "var(--body)", margin: "2px 0 4px" }}>{r.body}</div>
       <div style={{ display: "flex", gap: 2, alignItems: "center", marginLeft: -6 }}>
-        <ReactionButton icon="ti-flame" type="AMEN" count={r.amen} on={r.iReacted.amen} commentId={r.id} />
+        <ReactionButton type="AMEN" count={r.amen} on={r.iReacted.amen} commentId={r.id} />
         <ReactionButton type="PRAYING" count={r.praying} on={r.iReacted.praying} commentId={r.id} />
         {r.isMine && <button onClick={del} aria-label="Delete reply" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, padding: "4px 6px" }}><i className="ti ti-trash" /></button>}
       </div>
