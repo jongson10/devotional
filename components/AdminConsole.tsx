@@ -286,6 +286,14 @@ function Members() {
     await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "removeMember", userId }) });
     load();
   }
+  async function changeEmail(userId: string, name: string, current: string) {
+    const next = prompt(`New email for ${name}? They'll sign in with this address from now on; links sent to the old one stop working.`, current);
+    if (!next || next.trim().toLowerCase() === current.toLowerCase()) return;
+    const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setEmail", userId, email: next.trim() }) });
+    const j = await r.json();
+    if (j.error) alert(j.error);
+    load();
+  }
   if (!members) return <div style={{ color: "var(--muted)" }}>Loading…</div>;
   return (
     <div>
@@ -295,7 +303,10 @@ function Members() {
           <Avatar name={m.name} image={m.image} size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 500 }}>{m.name}{m.isMe && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
-            <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {m.email}
+              <button onClick={() => changeEmail(m.id, m.name, m.email)} aria-label={`Change email for ${m.name}`} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, padding: "0 0 0 6px", verticalAlign: "baseline" }}><i className="ti ti-pencil" /></button>
+            </div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Active {fmtAgo(m.lastActiveAt)} · {m.daysCompleted} days</div>
           </div>
           {m.role === "OWNER" ? (

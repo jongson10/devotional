@@ -118,6 +118,18 @@ export async function POST(req: NextRequest) {
       await prisma.user.update({ where: { id: userId }, data: { role } });
       return NextResponse.json({ ok: true });
     }
+    case "setEmail": {
+      const { userId } = data;
+      const email = String(data.email ?? "").trim().toLowerCase();
+      if (!userId || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "invalid email" }, { status: 400 });
+      const target = await prisma.user.findFirst({ where: { id: userId, churchId }, select: { id: true, role: true } });
+      if (!target) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      if (target.role === "OWNER" && target.id !== admin.id) return NextResponse.json({ error: "cannot change the owner's email" }, { status: 403 });
+      const taken = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (taken && taken.id !== userId) return NextResponse.json({ error: "that email is already in use" }, { status: 409 });
+      await prisma.user.update({ where: { id: userId }, data: { email, emailVerified: null } });
+      return NextResponse.json({ ok: true });
+    }
     case "removeMember": {
       const { userId } = data;
       if (!userId || userId === admin.id) return NextResponse.json({ error: "bad request" }, { status: 400 });
