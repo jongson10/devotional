@@ -18,15 +18,26 @@ async function recordStep(dayId: string, step: number) {
   try { await fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId, step }) }); } catch {}
 }
 
-function PassageText({ text }: { text: string }) {
+function Verses({ text }: { text: string }) {
   const parts = text.split(/(\[\d+\])/g);
   return (
-    <div style={{ fontSize: 16, lineHeight: 1.7, whiteSpace: "pre-line" }}>
+    <>
       {parts.map((p, i) => {
         const m = p.match(/^\[(\d+)\]$/);
         if (m) return <sup key={i} style={{ fontSize: "0.62em", color: "var(--accent)", fontWeight: 600, marginRight: 2, verticalAlign: "super" }}>{m[1]}</sup>;
         return <span key={i}>{p}</span>;
       })}
+    </>
+  );
+}
+
+function PassageText({ text }: { text: string }) {
+  const blocks = text.replace(/\r/g, "").split(/\n{2,}/);
+  return (
+    <div style={{ fontSize: 16, lineHeight: 1.7 }}>
+      {blocks.map((b, k) => (
+        <div key={k} style={{ whiteSpace: "pre-line", marginBottom: k < blocks.length - 1 ? 12 : 0 }}><Verses text={b} /></div>
+      ))}
     </div>
   );
 }
@@ -177,7 +188,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
         {!revealed.passage && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Today</div>
-            <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--body)", whiteSpace: "pre-line" }}>{data.intro || "Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer."}</div>
+            <div style={{ fontSize: 16, lineHeight: 1.7, color: "var(--body)", whiteSpace: "pre-line" }}>{data.intro || "Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer."}</div>
           </section>
         )}
 
@@ -195,7 +206,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
         {revealed.lesson && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Lesson</div>
-            <div style={{ fontSize: 14, lineHeight: 1.65, color: "var(--body)", whiteSpace: "pre-line" }}>{data.teaching}</div>
+            <div style={{ fontSize: 16, lineHeight: 1.7, color: "var(--body)", whiteSpace: "pre-line" }}>{data.teaching}</div>
           </section>
         )}
 
