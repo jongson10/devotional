@@ -47,7 +47,7 @@ export default function SettingsView({ name, email, bio, image, isAdmin }: { nam
   }
 
   return (
-    <div style={{ padding: "26px 18px", maxWidth: 480, margin: "0 auto" }}>
+    <div style={{ padding: "30px 20px", maxWidth: 480, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}>Settings</h1>
         {isAdmin && <Link href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 500, color: "var(--accent)" }}><i className="ti ti-settings-cog" /> Admin</Link>}

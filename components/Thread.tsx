@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PrayerHands } from "./Avatar";
 
 type Target = { reflectionId?: string; prayerId?: string };
 type Reply = { id: string; author: string; isMine: boolean; body: string; amen: number; praying: number; iReacted: { amen: boolean; praying: boolean } };
@@ -16,9 +15,7 @@ function ReactionButton({ type, count, on, reflectionId, prayerId, commentId }: 
   }
   return (
     <button onClick={toggle} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 6px", background: "none", border: "none", color: active ? "var(--accent)" : "var(--muted)" }}>
-      {type === "PRAYING"
-        ? <PrayerHands size={14} />
-        : <svg width="14" height="14" viewBox="0 0 24 24" fill={c > 0 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" style={{ verticalAlign: "-2px" }} aria-hidden="true"><path d="M12 21l-1.45-1.32C5.4 14.99 2 11.9 2 8.05 2 5.27 4.2 3 7 3c1.74 0 3.41.81 4.5 2.09C12.59 3.81 14.26 3 16 3c2.8 0 5 2.27 5 5.05 0 3.85-3.4 6.94-8.55 11.63L12 21z" /></svg>}
+      <i className={`ti ${type === "PRAYING" ? "ti-heart-handshake" : "ti-flame"}`} style={{ fontSize: 14 }} aria-hidden="true" />
       <span>{type === "PRAYING" ? "Praying" : "Amen"}</span>{c > 0 ? <span style={{ marginLeft: 1 }}>{c}</span> : null}
     </button>
   );

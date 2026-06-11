@@ -26,7 +26,7 @@ export default function Community({ churchName, initialRows = [], initialActivit
   const [sort, setSort] = useState<SortKey>("stars");
   const sorted = [...rows].sort((a, b) => b[sort] - a[sort]);
   return (
-    <div style={{ padding: "26px 18px" }}>
+    <div style={{ padding: "30px 20px" }}>
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 6 }}>Community</h1>
       <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18, lineHeight: 1.5 }}>A gentle encouragement to keep showing up — not a competition. Walk your own pace.</p>

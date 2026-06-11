@@ -159,7 +159,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
 
   return (
     <div style={{ position: "relative", minHeight: "100vh" }}>
-      <div style={{ padding: "18px 18px 190px" }}>
+      <div style={{ padding: "24px 20px 190px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
           <div>
             <div className="label">Day {data.order}{data.weekNumber ? ` · Week ${data.weekNumber}` : ""}</div>
@@ -372,7 +372,7 @@ function CommunitySheet({ myPrayer, reflectionsOn, prayersOn, onClose }: { myPra
             </div>
           ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
-          {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-pray", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
+          {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-heart-handshake", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
           {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} image={p.image} reactions={[]}><PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} /></PostCard>))}
           {!loading && tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>

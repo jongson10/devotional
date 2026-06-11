@@ -5,7 +5,7 @@ import { Avatar } from "./Avatar";
 export default function PrayerRoom({ churchName, initial = [] }: { churchName: string; initial?: any[] }) {
   const prayers = initial;
   return (
-    <div style={{ padding: "26px 18px" }}>
+    <div style={{ padding: "30px 20px" }}>
       <div className="label" style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}><i className="ti ti-users" /> {churchName}</div>
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 22 }}>Prayer room</h1>
       {prayers.length === 0 && (<div style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6 }}>The prayer room is quiet right now. When someone shares a prayer, it appears here.</div>)}
