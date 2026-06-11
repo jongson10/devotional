@@ -32,7 +32,7 @@ function Verses({ text }: { text: string }) {
 }
 
 function PassageText({ text }: { text: string }) {
-  const blocks = text.replace(/\r/g, "").split(/\n{2,}/);
+  const blocks = text.replace(/\r/g, "").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
   return (
     <div style={{ fontSize: 16, lineHeight: 1.7 }}>
       {blocks.map((b, k) => (
