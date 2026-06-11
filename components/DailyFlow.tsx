@@ -404,36 +404,29 @@ function CommunitySheet({ myPrayer, reflectionsOn, prayersOn, onClose }: { myPra
             </div>
           ))}
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
-          {tab === "prayers" && myPrayer && (<PostCard author="You" body={myPrayer} mine note="Shared just now" reactions={[{ icon: "ti-heart-handshake", label: "Praying", count: 0, on: false, onClick: () => {} }]} />)}
-          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (<PostCard key={p.id} author={p.author} body={p.body} mine={p.isMine} image={p.image} reactions={[]}><PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} /></PostCard>))}
+          {tab === "prayers" && myPrayer && (
+            <div style={{ display: "flex", gap: 9, marginBottom: 14 }}>
+              <Avatar name="You" size={30} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>You<span style={{ color: "var(--accent)", fontWeight: 400 }}> · shared just now</span></div>
+                <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{myPrayer}</div>
+              </div>
+            </div>
+          )}
+          {!loading && tab === "prayers" && prayers.filter((p) => !p.isMine || !myPrayer).map((p) => (
+            <div key={p.id} style={{ display: "flex", gap: 9, marginBottom: 14 }}>
+              <Avatar name={p.author} image={p.image} size={30} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
+                <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{p.body}</div>
+                <PostThread target={{ prayerId: p.id }} praying={{ count: p.praying, on: p.iPrayed }} comments={p.comments} />
+              </div>
+            </div>
+          ))}
           {!loading && tab === "prayers" && prayers.length === 0 && !myPrayer && <Empty text="The prayer room is quiet right now." />}
         </div>
       </div>
     </div>
-  );
-}
-
-function PostCard({ author, body, mine, note, image, reactions, children }: { author: string; body: string; mine?: boolean; note?: string; image?: string | null; reactions: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }[]; children?: React.ReactNode; }) {
-  return (
-    <div style={{ background: "var(--glassBg)", border: `1px solid ${mine ? "var(--accent)" : "var(--line)"}`, borderRadius: 16, padding: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
-        <Avatar name={author} image={image} size={30} />
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{author}{note && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · {note}</span>}</div>
-      </div>
-      <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", marginBottom: 12 }}>{body}</div>
-      <div style={{ display: "flex", gap: 8 }}>{reactions.map((r) => <ReactBtn key={r.label} {...r} />)}</div>
-      {children}
-    </div>
-  );
-}
-
-function ReactBtn({ icon, label, count, on, onClick }: { icon: string; label: string; count: number; on?: boolean; onClick: () => void }) {
-  const [active, setActive] = useState(!!on);
-  const [c, setC] = useState(count);
-  return (
-    <button onClick={() => { setActive(!active); setC(c + (active ? -1 : 1)); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 11px", borderRadius: 99, border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`, background: active ? "var(--glassBg)" : "transparent", color: active ? "var(--accent)" : "var(--body)" }}>
-      <i className={`ti ${icon}`} /> {label} <span>{c}</span>
-    </button>
   );
 }
 
