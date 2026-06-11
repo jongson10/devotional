@@ -125,6 +125,13 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
   // which sections are revealed (passage and lesson reveal one at a time)
   const [revealed, setRevealed] = useState<{ passage: boolean; lesson: boolean }>(init.revealed ?? { passage: false, lesson: false });
 
+  // Re-open the passage on revisit if it was revealed before (per device).
+  useEffect(() => {
+    if (!data || stage !== "intro") return;
+    try { if (localStorage.getItem(`passageOpen:${data.id}`)) { setRevealed((p) => ({ ...p, passage: true })); setStage("passage"); } } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (err) return <div style={{ padding: 28, color: "var(--muted)", textAlign: "center", lineHeight: 1.6 }}>{err}</div>;
   if (!data || stage === "loading") return (
     <div style={{ padding: "18px 18px" }} aria-busy="true" aria-label="Loading">
@@ -145,7 +152,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
   async function savePrayer(body: string, shared: boolean) {
     await fetch("/api/prayers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, body, shared, anonymous: false }) });
   }
-  function revealPassage() { setRevealed((p) => ({ ...p, passage: true })); setStage("passage"); }
+  function revealPassage() { setRevealed((p) => ({ ...p, passage: true })); setStage("passage"); try { localStorage.setItem(`passageOpen:${data!.id}`, "1"); } catch {} }
   function revealLesson() { setRevealed((p) => ({ ...p, lesson: true })); setStage("lesson"); recordStep(data!.id, 1); }
   async function completeDay() {
     const r = await fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, step: 4 }) });
@@ -179,7 +186,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
     else if (stage === "prayer") setStage("reflect");
     else if (stage === "reflect") setStage("lesson");
     else if (stage === "lesson") { setRevealed({ passage: true, lesson: false }); setStage("passage"); }
-    else if (stage === "passage") { setRevealed({ passage: false, lesson: false }); setStage("intro"); }
+    else if (stage === "passage") { setRevealed({ passage: false, lesson: false }); setStage("intro"); try { localStorage.removeItem(`passageOpen:${data!.id}`); } catch {} }
   }
 
   return (
@@ -299,13 +306,13 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
 
 function ProgressDots({ stage, onStepBack }: { stage: Stage; onStepBack?: () => void }) {
   const order: Stage[] = ["passage", "lesson", "reflect", "prayer"];
-  const idx = stage === "complete" ? 4 : stage === "intro" ? 0 : Math.max(0, order.indexOf(stage));
+  const lit = stage === "complete" ? 4 : stage === "intro" ? 0 : order.indexOf(stage) + 1;
   const canStepBack = stage !== "intro";
   return (
     <div style={{ display: "flex", gap: 6, paddingTop: 6 }}>
       {[0, 1, 2, 3].map((n) => (
         <button key={n} onClick={onStepBack} disabled={!canStepBack} aria-label="Step back one" title="Tap to step back one"
-          style={{ width: 26, height: 3, borderRadius: 99, background: n <= idx ? "var(--accent)" : "var(--line)", transition: "background .3s", border: "none", padding: 0, cursor: canStepBack ? "pointer" : "default" }} />
+          style={{ width: 26, height: 3, borderRadius: 99, background: n < lit ? "var(--accent)" : "var(--line)", transition: "background .3s", border: "none", padding: 0, cursor: canStepBack ? "pointer" : "default" }} />
       ))}
     </div>
   );
