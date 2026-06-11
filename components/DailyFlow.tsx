@@ -42,6 +42,20 @@ function PassageText({ text }: { text: string }) {
   );
 }
 
+// Minimal inline markdown: **bold** and *italic*. Everything else stays literal.
+function Rich({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g);
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (/^\*\*[^*\n]+\*\*$/.test(p)) return <strong key={i}>{p.slice(2, -2)}</strong>;
+        if (/^\*[^*\n]+\*$/.test(p)) return <em key={i}>{p.slice(1, -1)}</em>;
+        return <span key={i}>{p}</span>;
+      })}
+    </>
+  );
+}
+
 type Initial =
   | { error: string; status?: number }
   | { day: any; progress: { step: number; completed: boolean }; myReflections: { questionIndex: number; body: string }[]; myPrayer: { body: string; shared: boolean } | null };
@@ -188,7 +202,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
         {!revealed.passage && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Today</div>
-            <div style={{ fontSize: 16, lineHeight: 1.7, color: "var(--body)", whiteSpace: "pre-line" }}>{data.intro || "Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer."}</div>
+            <div style={{ fontSize: 16, lineHeight: 1.7, color: "var(--body)", whiteSpace: "pre-line" }}><Rich text={data.intro || "Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer."} /></div>
           </section>
         )}
 
@@ -206,7 +220,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
         {revealed.lesson && (
           <section className="rise" style={{ marginBottom: 22 }}>
             <div className="label" style={{ marginBottom: 11 }}>Lesson</div>
-            <div style={{ fontSize: 16, lineHeight: 1.7, color: "var(--body)", whiteSpace: "pre-line" }}>{data.teaching}</div>
+            <div style={{ fontSize: 16, lineHeight: 1.7, color: "var(--body)", whiteSpace: "pre-line" }}><Rich text={data.teaching} /></div>
           </section>
         )}
 
@@ -218,7 +232,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
                 <div style={{ display: "flex", gap: 9 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: accent, lineHeight: 1.5 }}>{i + 1}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45 }}>{q}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45 }}><Rich text={q} /></div>
                     {(reflectAnswers[i] ?? []).map((a, j) => (
                       editingRef && editingRef.q === i && editingRef.j === j ? (
                         <div key={j} className="glass" style={{ borderRadius: 12, padding: "6px 6px 6px 12px", display: "flex", alignItems: "flex-end", gap: 6, marginTop: 6 }}>
@@ -248,7 +262,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
               {prayerShare ? "Sharing to the prayer room" : "Private — only you can see this"}
               <span style={{ fontSize: 11, color: accent, marginLeft: 2 }}>· tap to {prayerShare ? "keep private" : "share"}</span>
             </button>
-            <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginBottom: 8 }}>{data.prayerPrompt ?? "Write a prayer in response to today."}</div>
+            <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginBottom: 8 }}><Rich text={data.prayerPrompt ?? "Write a prayer in response to today."} /></div>
             {prayerText && !editingPrayer && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                 <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>{prayerText}{prayerShare && (<div style={{ fontSize: 11, color: accent, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-users" /> Shared to prayer room</div>)}</div>
