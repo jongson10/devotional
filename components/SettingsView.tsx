@@ -66,10 +66,6 @@ export default function SettingsView({ name, email, bio, image, isAdmin }: { nam
           </div>
         </div>
         <label style={{ display: "block", marginBottom: 12 }}>
-          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>…or paste an image URL</span>
-          <input style={inputStyle} value={img.startsWith("data:") ? "" : img} onChange={(e) => setImg(e.target.value)} placeholder="https://… (link to an image)" />
-        </label>
-        <label style={{ display: "block", marginBottom: 12 }}>
           <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Name</span>
           <input style={inputStyle} value={n} onChange={(e) => setN(e.target.value)} placeholder="Your name" />
         </label>

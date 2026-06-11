@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "./ThemeProvider";
 
@@ -35,26 +35,33 @@ export default function HomeView({ name, churchName, seriesList, streak, points 
 
 function SeriesSection({ series, defaultOpen }: { series: SeriesData; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    try { const saved = localStorage.getItem(`seriesOpen:${series.id}`); if (saved !== null) setOpen(saved === "1"); } catch {}
+  }, [series.id]);
+  function toggle() {
+    setOpen((v) => { const nv = !v; try { localStorage.setItem(`seriesOpen:${series.id}`, nv ? "1" : "0"); } catch {} return nv; });
+  }
   const doneCount = series.days.filter((d) => d.done).length;
   return (
     <div style={{ marginBottom: open ? 44 : 24 }}>
-      <button onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{ width: "100%", background: "none", border: "none", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", color: "var(--ink)", marginBottom: 6 }}>
+      <button onClick={toggle} aria-expanded={open} style={{ width: "100%", background: "none", border: "none", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", color: "var(--ink)", marginBottom: 6 }}>
         <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", flex: 1, minWidth: 0 }}>{series.title}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
           {series.days.length > 0 && <span style={{ fontSize: 12, color: "var(--muted)" }}>{doneCount} of {series.days.length}</span>}
           <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ color: "var(--muted)", fontSize: 16 }} aria-hidden="true" />
         </span>
       </button>
-      {open && (series.subtitle || series.weekNumber) && <div className="label" style={{ marginBottom: 12 }}>{series.weekNumber ? `Week ${series.weekNumber}` : ""}{series.weekNumber && series.subtitle ? " · " : ""}{series.subtitle ?? ""}</div>}
+      {(series.subtitle || series.weekNumber) && <div className="label" style={{ marginBottom: 12 }}>{series.weekNumber ? `Week ${series.weekNumber}` : ""}{series.weekNumber && series.subtitle ? " · " : ""}{series.subtitle ?? ""}</div>}
       {series.days.length > 0 && (
-        <div role="progressbar" aria-valuemin={0} aria-valuemax={series.days.length} aria-valuenow={doneCount} aria-label={`${series.title} progress`} style={{ height: 3, background: "var(--line)", borderRadius: 2, marginBottom: open ? 16 : 0 }}>
+        <div role="progressbar" aria-valuemin={0} aria-valuemax={series.days.length} aria-valuenow={doneCount} aria-label={`${series.title} progress`} style={{ height: 3, background: "var(--line)", borderRadius: 2, marginBottom: open ? 4 : 0 }}>
           <div style={{ width: `${Math.round((doneCount / series.days.length) * 100)}%`, height: 3, background: "var(--accent)", borderRadius: 2, transition: "width .4s ease" }} />
         </div>
       )}
 
       {open && <div style={{ display: "flex", flexDirection: "column" }}>
-        {series.days.map((d) => {
+        {series.days.map((d, idx) => {
           const isTodayCard = series.todayCardId === d.id;
+          const nextIsToday = series.days[idx + 1]?.id === series.todayCardId;
           if (isTodayCard) {
             return (
               <Link key={d.id} href={`/today?dayId=${d.id}`} style={{ background: "var(--parchment)", border: "1px solid var(--parchmentBorder)", borderRadius: 16, padding: 18, color: "var(--ink)", marginBottom: 16 }}>
@@ -85,7 +92,7 @@ function SeriesSection({ series, defaultOpen }: { series: SeriesData; defaultOpe
               <i className={`ti ${locked ? "ti-lock" : "ti-chevron-right"}`} style={{ color: "var(--muted)", opacity: 0.6 }} aria-hidden="true" />
             </>
           );
-          const style: React.CSSProperties = { borderBottom: "1px solid var(--line)", padding: "15px 2px", display: "flex", alignItems: "center", gap: 12, opacity: locked ? 0.55 : 1 };
+          const style: React.CSSProperties = { borderBottom: nextIsToday ? "none" : "1px solid var(--line)", padding: "15px 2px", display: "flex", alignItems: "center", gap: 12, opacity: locked ? 0.55 : 1 };
           return (d.openable || d.done) ? <Link key={d.id} href={`/today?dayId=${d.id}`} style={style}>{inner}</Link> : <div key={d.id} aria-disabled="true" style={style}>{inner}</div>;
         })}
         {series.days.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 18, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>No days yet.</div>)}
