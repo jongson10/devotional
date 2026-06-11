@@ -77,6 +77,8 @@ model Church {
   pointsLabel           String  @default("stars")
   timezone  String  @default("America/Los_Angeles")
   introText String? @db.Text
+  bannerEnabled Boolean @default(false)
+  bannerText    String? @db.Text
   users  User[]
   series Series[]
   createdAt DateTime @default(now())

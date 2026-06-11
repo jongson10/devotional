@@ -12,7 +12,7 @@ export default async function HomePage() {
   if (!user) redirect("/login");
 
   const [church, allSeries, streak] = await Promise.all([
-    user.churchId ? prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true } }) : Promise.resolve(null),
+    user.churchId ? (prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true, bannerEnabled: true, bannerText: true } as any }) as Promise<any>) : Promise.resolve(null),
     user.churchId ? prisma.series.findMany({ where: { churchId: user.churchId, published: true }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }) : Promise.resolve([]),
     streakState(user.id),
   ]);
@@ -41,5 +41,6 @@ export default async function HomePage() {
     return { id: series.id, title: series.title, subtitle: series.subtitle, weekNumber: series.weekNumber, days, todayCardId: todayCard?.id ?? null };
   });
 
-  return <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesList={seriesList} streak={streak.streak} points={streak.points} />;
+  const banner = (church as any)?.bannerEnabled ? ((church as any)?.bannerText ?? null) : null;
+  return <HomeView name={user.name ?? user.email?.split("@")[0] ?? "friend"} churchName={church?.name ?? "Your church"} seriesList={seriesList} streak={streak.streak} points={streak.points} banner={banner} />;
 }

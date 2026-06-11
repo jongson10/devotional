@@ -15,8 +15,9 @@ export async function POST(req: NextRequest) {
     : await prisma.prayer.create({ data: { userId: user.id, dayId: dayId || null, body: body.trim(), shared: shared === true, anonymous: anonymous === true } });
   return NextResponse.json({ prayer });
 }
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  return NextResponse.json({ prayers: await prayerRoom(user) });
+  const dayId = new URL(req.url).searchParams.get("dayId") || undefined;
+  return NextResponse.json({ prayers: await prayerRoom(user, dayId) });
 }

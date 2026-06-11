@@ -299,7 +299,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
       </div>
 
       {showComplete && <CompleteOverlay streak={streak} points={points} onSeeFeed={canSeeFeed ? () => setShowFeed(true) : undefined} onDone={() => router.push("/")} />}
-      {showFeed && (<CommunitySheet myPrayer={prayerShare ? prayerText : null} reflectionsOn={showReflections} prayersOn={showPrayers} onClose={() => { setShowFeed(false); router.push("/"); }} />)}
+      {showFeed && (<CommunitySheet dayId={data.id} myPrayer={prayerShare ? prayerText : null} reflectionsOn={showReflections} prayersOn={showPrayers} onClose={() => { setShowFeed(false); router.push("/"); }} />)}
     </div>
   );
 }
@@ -355,7 +355,7 @@ function CompleteOverlay({ streak, points, onSeeFeed, onDone }: { streak: number
   );
 }
 
-function CommunitySheet({ myPrayer, reflectionsOn, prayersOn, onClose }: { myPrayer: string | null; reflectionsOn: boolean; prayersOn: boolean; onClose: () => void }) {
+function CommunitySheet({ dayId, myPrayer, reflectionsOn, prayersOn, onClose }: { dayId: string; myPrayer: string | null; reflectionsOn: boolean; prayersOn: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"reflections" | "prayers">(reflectionsOn ? "reflections" : "prayers");
   const [reflections, setReflections] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -363,9 +363,9 @@ function CommunitySheet({ myPrayer, reflectionsOn, prayersOn, onClose }: { myPra
   const [loading, setLoading] = useState(true);
   useEffect(() => { setTimeout(() => setShown(true), 20); }, []);
   useEffect(() => { Promise.all([
-    fetch("/api/reflections?feed=1").then((r) => r.json()).then((j) => setReflections(j.reflections ?? [])),
-    fetch("/api/prayers?room=1").then((r) => r.json()).then((j) => setPrayers(j.prayers ?? [])),
-  ]).finally(() => setLoading(false)); }, []);
+    fetch(`/api/reflections?feed=1&dayId=${dayId}`).then((r) => r.json()).then((j) => setReflections(j.reflections ?? [])),
+    fetch(`/api/prayers?room=1&dayId=${dayId}`).then((r) => r.json()).then((j) => setPrayers(j.prayers ?? [])),
+  ]).finally(() => setLoading(false)); }, [dayId]);
   async function react(type: "AMEN" | "PRAYING", id: string, kind: "reflection" | "prayer") {
     await fetch("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, [kind === "reflection" ? "reflectionId" : "prayerId"]: id }) });
   }
@@ -391,10 +391,13 @@ function CommunitySheet({ myPrayer, reflectionsOn, prayersOn, onClose }: { myPra
             <div key={t.key} style={{ marginBottom: 14 }}>
               <div className="label" style={{ marginBottom: 2 }}>{t.seriesTitle} · Day {t.dayOrder}</div>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{t.dayTitle}</div>
-              {t.posts.map((p: any) => (
-                <div key={p.id} style={{ display: "flex", gap: 9, marginBottom: 14 }}>
-                  <Avatar name={p.author} image={p.image} size={30} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+              {t.posts.map((p: any, pi: number) => (
+                <div key={p.id} style={{ display: "flex", gap: 9 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
+                    <Avatar name={p.author} image={p.image} size={30} />
+                    {pi < t.posts.length - 1 && <div style={{ width: 2, flex: 1, background: "var(--line)", marginTop: 4, minHeight: 8 }} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, paddingBottom: pi === t.posts.length - 1 ? 4 : 18 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{p.author}{p.isMine && <span style={{ color: "var(--accent)", fontWeight: 400 }}> · you</span>}</div>
                     <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{p.body}</div>
                     <PostThread target={{ reflectionId: p.id }} amen={{ count: p.amen, on: p.iReacted?.amen }} praying={{ count: p.praying, on: p.iReacted?.praying }} comments={p.comments} />

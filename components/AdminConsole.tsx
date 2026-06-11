@@ -86,10 +86,12 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
   const [refl, setRefl] = useState<boolean>(initialChurch?.reflectionFeedEnabled ?? true);
   const [pray, setPray] = useState<boolean>(initialChurch?.prayerRoomEnabled ?? true);
   const [comm, setComm] = useState<boolean>(initialChurch?.gamificationEnabled ?? true);
+  const [bannerOn, setBannerOn] = useState<boolean>(initialChurch?.bannerEnabled ?? false);
+  const [banner, setBanner] = useState<string>(initialChurch?.bannerText ?? "");
   const [saved, setSaved] = useState(false);
   async function save() {
     setSaved(false);
-    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name, introText: intro, reflectionFeedEnabled: refl, prayerRoomEnabled: pray, gamificationEnabled: comm }) });
+    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name, introText: intro, reflectionFeedEnabled: refl, prayerRoomEnabled: pray, gamificationEnabled: comm, bannerEnabled: bannerOn, bannerText: banner }) });
     setSaved(true); setTimeout(() => setSaved(false), 2500);
   }
   return (
@@ -105,6 +107,13 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
       <Field label="Welcome intro (global)" hint="Shown before today's passage. Leave blank for the default; a series can override it.">
         <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer." />
       </Field>
+      <span className="label" style={{ display: "block", marginTop: 6, marginBottom: 2 }}>Home banner</span>
+      <Toggle label="Show banner on home page" on={bannerOn} onChange={setBannerOn} />
+      {bannerOn && (
+        <Field label="Banner text" hint="Shown under the greeting, above the first series. Keep it short — announcements, a verse, a welcome.">
+          <textarea style={{ ...inputStyle, minHeight: 64, resize: "vertical" }} value={banner} onChange={(e) => setBanner(e.target.value)} maxLength={500} placeholder="e.g. Join us Wednesday 7pm for the mid-week prayer night." />
+        </Field>
+      )}
       <span className="label" style={{ display: "block", marginTop: 6, marginBottom: 2 }}>Tabs members can see</span>
       <Toggle label="Reflections" on={refl} onChange={setRefl} />
       <Toggle label="Prayer" on={pray} onChange={setPray} />

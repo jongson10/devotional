@@ -16,8 +16,9 @@ export async function POST(req: NextRequest) {
     : await prisma.reflection.create({ data: { userId: user.id, dayId, questionIndex, body: body.trim(), shared: true } });
   return NextResponse.json({ reflection: saved });
 }
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  return NextResponse.json({ reflections: await reflectionsFeed(user) });
+  const dayId = new URL(req.url).searchParams.get("dayId") || undefined;
+  return NextResponse.json({ reflections: await reflectionsFeed(user, dayId) });
 }

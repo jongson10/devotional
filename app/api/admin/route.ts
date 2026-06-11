@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
       if (typeof data.prayerRoomEnabled === "boolean") upd.prayerRoomEnabled = data.prayerRoomEnabled;
       if (typeof data.gamificationEnabled === "boolean") upd.gamificationEnabled = data.gamificationEnabled;
       if (typeof data.introText === "string") upd.introText = data.introText.trim().slice(0, 600) || null;
+      if (typeof data.bannerEnabled === "boolean") upd.bannerEnabled = data.bannerEnabled;
+      if (typeof data.bannerText === "string") upd.bannerText = data.bannerText.trim().slice(0, 500) || null;
       await prisma.church.update({ where: { id: churchId }, data: upd });
       return NextResponse.json({ ok: true });
     }

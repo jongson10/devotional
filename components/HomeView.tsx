@@ -9,7 +9,7 @@ type SeriesData = { id: string; title: string; subtitle: string | null; weekNumb
 
 const LATE = "var(--sage)";
 
-export default function HomeView({ name, churchName, seriesList, streak, points }: { name: string; churchName: string; seriesList: SeriesData[]; streak: number; points: number; }) {
+export default function HomeView({ name, churchName, seriesList, streak, points, banner }: { name: string; churchName: string; seriesList: SeriesData[]; streak: number; points: number; banner?: string | null; }) {
   const { resolved } = useTheme();
   const greeting = resolved === "dawn" ? "Good morning," : "Good evening,";
 
@@ -26,6 +26,12 @@ export default function HomeView({ name, churchName, seriesList, streak, points 
           <Hero icon="ti-star" value={points} label="Stars earned" />
         </div>
       </header>
+
+      {banner && (
+        <div style={{ background: "var(--parchment)", border: "1px solid var(--parchmentBorder)", borderRadius: 16, padding: "14px 16px", fontSize: 14, lineHeight: 1.6, color: "var(--body)", whiteSpace: "pre-line", marginBottom: 28 }}>
+          {banner}
+        </div>
+      )}
 
       {seriesList.length === 0 && (<div className="glass" style={{ borderRadius: 18, padding: 20, textAlign: "center", color: "var(--muted)" }}>No devotional available yet.</div>)}
       {seriesList.map((s, i) => <SeriesSection key={s.id} series={s} defaultOpen={!!s.todayCardId || (i === 0 && !seriesList.some((x) => x.todayCardId))} />)}

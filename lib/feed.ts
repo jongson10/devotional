@@ -35,10 +35,10 @@ async function commentsByPost(field: "reflectionId" | "prayerId", postIds: strin
 
 // One thread per DAY: everyone's reflections for a day are threaded together.
 // Threads ordered by most-recent activity; posts within a thread read oldest-first.
-export async function reflectionsFeed(user: FeedUser) {
+export async function reflectionsFeed(user: FeedUser, dayId?: string) {
   if (!user.churchId) return [];
   const rows = await prisma.reflection.findMany({
-    where: { shared: true, hidden: false, day: { series: { churchId: user.churchId } } },
+    where: { shared: true, hidden: false, ...(dayId ? { dayId } : {}), day: { series: { churchId: user.churchId } } },
     orderBy: { createdAt: "asc" }, take: 300,
     include: { user: { select: { id: true, name: true, image: true } }, reactions: { select: { type: true, userId: true } }, day: { select: { id: true, title: true, order: true, series: { select: { title: true } } } } },
   });
@@ -62,10 +62,10 @@ export async function reflectionsFeed(user: FeedUser) {
   return Array.from(threads.values()).sort((a, b) => b.lastAt - a.lastAt);
 }
 
-export async function prayerRoom(user: FeedUser) {
+export async function prayerRoom(user: FeedUser, dayId?: string) {
   if (!user.churchId) return [];
   const rows = await prisma.prayer.findMany({
-    where: { shared: true, hidden: false, user: { churchId: user.churchId } },
+    where: { shared: true, hidden: false, ...(dayId ? { dayId } : {}), user: { churchId: user.churchId } },
     orderBy: { createdAt: "desc" }, take: 80,
     include: { user: { select: { id: true, name: true, image: true } }, reactions: { select: { type: true, userId: true } } },
   });
@@ -147,7 +147,7 @@ export async function adminSeriesView(user: FeedUser) {
   const churchId = user.churchId;
   const [series, church] = await Promise.all([
     prisma.series.findMany({ where: { churchId }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }),
-    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true, reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true, introText: true } as any }),
+    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true, reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true, introText: true, bannerEnabled: true, bannerText: true } as any }),
   ]);
   return { series, church };
 }
