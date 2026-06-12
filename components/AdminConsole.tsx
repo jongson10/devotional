@@ -135,12 +135,8 @@ function Maintenance() {
     const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reconcileProgress" }) });
     const j = await r.json(); setBusy(false);
     if (j.error) { setMsg(String(j.error)); return; }
-    const lines = [
-      `Removed ${j.orphansRemoved ?? 0} orphaned row${(j.orphansRemoved ?? 0) === 1 ? "" : "s"}; checked ${j.checked} completed day${j.checked === 1 ? "" : "s"}; reset ${j.fixed}; rebuilt stats for ${j.rebuilt ?? 0} member${(j.rebuilt ?? 0) === 1 ? "" : "s"}.`,
-      ...(j.results ?? []),
-      ...(j.errors ?? []).map((e: string) => `⚠ ${e}`),
-    ];
-    setMsg(lines.join("\n"));
+    const summary = `Removed ${j.orphansRemoved ?? 0} orphaned row${(j.orphansRemoved ?? 0) === 1 ? "" : "s"}; reset ${j.fixed} of ${j.checked} completed day${j.checked === 1 ? "" : "s"}; rebuilt stats for ${j.rebuilt ?? 0} member${(j.rebuilt ?? 0) === 1 ? "" : "s"}.`;
+    setMsg([summary, ...(j.errors ?? []).map((e: string) => `⚠ ${e}`)].join("\n"));
   }
   return (
     <Card>

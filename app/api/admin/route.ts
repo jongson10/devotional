@@ -164,23 +164,12 @@ export async function POST(req: NextRequest) {
       const members = await prisma.user.findMany({ where: { churchId }, select: { id: true, name: true } });
       let rebuilt = 0;
       const errors: string[] = [];
-      const results: string[] = [];
-      const dayInfo = new Map((await prisma.day.findMany({ where: { series: { churchId } }, select: { id: true, order: true, title: true, series: { select: { title: true } } } })).map((d) => [d.id, d]));
       for (const m of members) {
-        const completions = await prisma.dayProgress.findMany({ where: { userId: m.id, completed: true }, select: { dayId: true, completedAt: true, pointsEarned: true } });
-        try {
-          const s = await rebuildStreakFromHistory(m.id, completions);
-          rebuilt++;
-          results.push(`${m.name ?? m.id.slice(0, 6)}: ${completions.length} completed days → streak ${s.streak}, ${s.points} stars`);
-          for (const c of completions.slice(0, 15)) {
-            const d = dayInfo.get(c.dayId);
-            results.push(d ? `· ${d.series.title} — Day ${d.order} (${c.pointsEarned}★, ${c.completedAt.toISOString().slice(0, 10)})` : `· unknown day ${c.dayId.slice(0, 8)} (${c.pointsEarned}★)`);
-          }
-        } catch (e: any) {
-          errors.push(`${m.name ?? m.id.slice(0, 6)}: ${e?.message ?? "unknown error"}`);
-        }
+        const completions = await prisma.dayProgress.findMany({ where: { userId: m.id, completed: true }, select: { completedAt: true, pointsEarned: true } });
+        try { await rebuildStreakFromHistory(m.id, completions); rebuilt++; }
+        catch (e: any) { errors.push(`${m.name ?? m.id.slice(0, 6)}: ${e?.message ?? "unknown error"}`); }
       }
-      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt, results, errors, orphansRemoved: orphanProgIds.length });
+      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt, orphansRemoved: orphanProgIds.length, errors });
     }
     case "setEmail": {
       const { userId } = data;
