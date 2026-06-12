@@ -136,7 +136,7 @@ function Maintenance() {
     const j = await r.json(); setBusy(false);
     if (j.error) { setMsg(String(j.error)); return; }
     const lines = [
-      `Checked ${j.checked} completed day${j.checked === 1 ? "" : "s"}; reset ${j.fixed}; rebuilt stats for ${j.rebuilt ?? 0} member${(j.rebuilt ?? 0) === 1 ? "" : "s"}.`,
+      `Removed ${j.orphansRemoved ?? 0} orphaned row${(j.orphansRemoved ?? 0) === 1 ? "" : "s"}; checked ${j.checked} completed day${j.checked === 1 ? "" : "s"}; reset ${j.fixed}; rebuilt stats for ${j.rebuilt ?? 0} member${(j.rebuilt ?? 0) === 1 ? "" : "s"}.`,
       ...(j.results ?? []),
       ...(j.errors ?? []).map((e: string) => `⚠ ${e}`),
     ];

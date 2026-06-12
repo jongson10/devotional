@@ -139,12 +139,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
     case "reconcileProgress": {
+      // Stage 0: delete orphaned rows that point at days which no longer exist
+      // (e.g. a series delete whose cascade never reached them).
+      const allProg = await prisma.dayProgress.findMany({ where: { user: { churchId } }, select: { id: true, dayId: true } });
+      const referencedDayIds = Array.from(new Set(allProg.map((p) => p.dayId)));
+      const liveDayIds = new Set((await prisma.day.findMany({ where: { id: { in: referencedDayIds } }, select: { id: true } })).map((d) => d.id));
+      const orphanProgIds = allProg.filter((p) => !liveDayIds.has(p.dayId)).map((p) => p.id);
+      if (orphanProgIds.length) await prisma.dayProgress.deleteMany({ where: { id: { in: orphanProgIds } } });
       // One-off cleanup: un-complete any day whose reflections/prayer were deleted
       // before deletes started rolling progress back automatically.
       const progs = await prisma.dayProgress.findMany({ where: { completed: true, user: { churchId } }, include: { day: { select: { reflectionQuestions: true } } } });
       let fixed = 0;
       for (const pr of progs) {
-        const qs = Array.isArray(pr.day.reflectionQuestions) ? (pr.day.reflectionQuestions as any[]).length : 0;
+        const qs = Array.isArray(pr.day?.reflectionQuestions) ? (pr.day.reflectionQuestions as any[]).length : 0;
         const [refCount, prayer] = await Promise.all([
           prisma.reflection.count({ where: { userId: pr.userId, dayId: pr.dayId } }),
           prisma.prayer.findFirst({ where: { userId: pr.userId, dayId: pr.dayId }, select: { id: true } }),
@@ -158,17 +165,22 @@ export async function POST(req: NextRequest) {
       let rebuilt = 0;
       const errors: string[] = [];
       const results: string[] = [];
+      const dayInfo = new Map((await prisma.day.findMany({ where: { series: { churchId } }, select: { id: true, order: true, title: true, series: { select: { title: true } } } })).map((d) => [d.id, d]));
       for (const m of members) {
-        const completions = await prisma.dayProgress.findMany({ where: { userId: m.id, completed: true }, select: { completedAt: true, pointsEarned: true } });
+        const completions = await prisma.dayProgress.findMany({ where: { userId: m.id, completed: true }, select: { dayId: true, completedAt: true, pointsEarned: true } });
         try {
           const s = await rebuildStreakFromHistory(m.id, completions);
           rebuilt++;
           results.push(`${m.name ?? m.id.slice(0, 6)}: ${completions.length} completed days → streak ${s.streak}, ${s.points} stars`);
+          for (const c of completions.slice(0, 15)) {
+            const d = dayInfo.get(c.dayId);
+            results.push(d ? `· ${d.series.title} — Day ${d.order} (${c.pointsEarned}★, ${c.completedAt.toISOString().slice(0, 10)})` : `· unknown day ${c.dayId.slice(0, 8)} (${c.pointsEarned}★)`);
+          }
         } catch (e: any) {
           errors.push(`${m.name ?? m.id.slice(0, 6)}: ${e?.message ?? "unknown error"}`);
         }
       }
-      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt, results, errors });
+      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt, results, errors, orphansRemoved: orphanProgIds.length });
     }
     case "setEmail": {
       const { userId } = data;
