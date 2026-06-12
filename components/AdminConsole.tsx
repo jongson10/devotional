@@ -140,7 +140,7 @@ function Maintenance() {
     <Card>
       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Maintenance</div>
       <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginBottom: 12 }}>
-        Rechecks every completed day for all members and un-completes any that are missing their reflections or prayer (e.g. deleted before completion tracking handled deletes). Streaks and stars are rebuilt to match.
+        Rechecks every completed day for all members and un-completes any that are missing their reflections or prayer, then rebuilds every member's streak and stars from their remaining completed days (fixes stale stats from older deletes or removed series).
       </p>
       <button className="btn-ghost" style={{ fontSize: 13, padding: "10px 14px" }} onClick={run} disabled={busy}>{busy ? "Checking…" : "Recheck completion marks"}</button>
       {msg && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>{msg}</div>}

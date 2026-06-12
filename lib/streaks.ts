@@ -56,7 +56,7 @@ export async function addPoints(userId: string, pointsToAdd: number): Promise<St
   return { ...cur, points };
 }
 export async function rebuildStreakFromHistory(userId: string, completions: { completedAt: Date; pointsEarned: number }[]): Promise<StreakState> {
-  if (completions.length === 0) return { streak: 0, longest: 0, lastDay: null, points: 0, totalDays: 0 };
+  if (completions.length === 0) { await redis().del(stateKey(userId)); return { streak: 0, longest: 0, lastDay: null, points: 0, totalDays: 0 }; }
   const days = Array.from(new Set(completions.map((c) => ymd(new Date(c.completedAt))))).sort();
   let longest = 1, run = 1;
   for (let i = 1; i < days.length; i++) { if (daysBetween(days[i-1], days[i]) === 1) run++; else run = 1; longest = Math.max(longest, run); }

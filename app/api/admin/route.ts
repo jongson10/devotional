@@ -152,7 +152,14 @@ export async function POST(req: NextRequest) {
         if (qs > 0 && refCount < qs) { await rollbackDayProgress(pr.userId, pr.dayId, 1); fixed++; }
         else if (!prayer) { await rollbackDayProgress(pr.userId, pr.dayId, 2); fixed++; }
       }
-      return NextResponse.json({ ok: true, checked: progs.length, fixed });
+      // Then rebuild every member's streak/stars from their remaining completed days,
+      // catching anything stale from old deletes (e.g. a removed series).
+      const members = await prisma.user.findMany({ where: { churchId }, select: { id: true } });
+      for (const m of members) {
+        const completions = await prisma.dayProgress.findMany({ where: { userId: m.id, completed: true }, select: { completedAt: true, pointsEarned: true } });
+        try { await rebuildStreakFromHistory(m.id, completions); } catch {}
+      }
+      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt: members.length });
     }
     case "setEmail": {
       const { userId } = data;
