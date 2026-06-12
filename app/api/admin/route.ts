@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { adminSeriesView, memberActivity } from "@/lib/feed";
+import { adminSeriesView, memberActivity, rollbackDayProgress } from "@/lib/feed";
 import { parseSeriesMarkdown } from "@/lib/seriesImport";
 
 export const dynamic = "force-dynamic";
@@ -119,6 +119,22 @@ export async function POST(req: NextRequest) {
       if (target.role === "OWNER") return NextResponse.json({ error: "cannot change the owner" }, { status: 403 });
       await prisma.user.update({ where: { id: userId }, data: { role } });
       return NextResponse.json({ ok: true });
+    }
+    case "reconcileProgress": {
+      // One-off cleanup: un-complete any day whose reflections/prayer were deleted
+      // before deletes started rolling progress back automatically.
+      const progs = await prisma.dayProgress.findMany({ where: { completed: true, user: { churchId } }, include: { day: { select: { reflectionQuestions: true } } } });
+      let fixed = 0;
+      for (const pr of progs) {
+        const qs = Array.isArray(pr.day.reflectionQuestions) ? (pr.day.reflectionQuestions as any[]).length : 0;
+        const [refCount, prayer] = await Promise.all([
+          prisma.reflection.count({ where: { userId: pr.userId, dayId: pr.dayId } }),
+          prisma.prayer.findFirst({ where: { userId: pr.userId, dayId: pr.dayId }, select: { id: true } }),
+        ]);
+        if (qs > 0 && refCount < qs) { await rollbackDayProgress(pr.userId, pr.dayId, 1); fixed++; }
+        else if (!prayer) { await rollbackDayProgress(pr.userId, pr.dayId, 2); fixed++; }
+      }
+      return NextResponse.json({ ok: true, checked: progs.length, fixed });
     }
     case "setEmail": {
       const { userId } = data;

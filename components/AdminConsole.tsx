@@ -95,6 +95,7 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
     setSaved(true); setTimeout(() => setSaved(false), 2500);
   }
   return (
+    <>
     <Card>
       <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Church settings</div>
       <Field label="Church name"><input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Church name" /></Field>
@@ -120,6 +121,29 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
       <Toggle label="Community" on={comm} onChange={setComm} />
       <button className="btn-primary" style={{ marginTop: 12 }} onClick={save}>Save settings</button>
       {saved && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8, textAlign: "center" }}>Saved.</div>}
+    </Card>
+    <Maintenance />
+    </>
+  );
+}
+
+function Maintenance() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  async function run() {
+    setBusy(true); setMsg(null);
+    const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reconcileProgress" }) });
+    const j = await r.json(); setBusy(false);
+    setMsg(j.error ? String(j.error) : `Checked ${j.checked} completed day${j.checked === 1 ? "" : "s"}; reset ${j.fixed}.`);
+  }
+  return (
+    <Card>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Maintenance</div>
+      <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginBottom: 12 }}>
+        Rechecks every completed day for all members and un-completes any that are missing their reflections or prayer (e.g. deleted before completion tracking handled deletes). Streaks and stars are rebuilt to match.
+      </p>
+      <button className="btn-ghost" style={{ fontSize: 13, padding: "10px 14px" }} onClick={run} disabled={busy}>{busy ? "Checking…" : "Recheck completion marks"}</button>
+      {msg && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>{msg}</div>}
     </Card>
   );
 }
