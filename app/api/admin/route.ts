@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { adminSeriesView, memberActivity, rollbackDayProgress } from "@/lib/feed";
+import { rebuildStreakFromHistory } from "@/lib/streaks";
 import { parseSeriesMarkdown } from "@/lib/seriesImport";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +85,24 @@ export async function POST(req: NextRequest) {
     case "deleteSeries": {
       const owns = await prisma.series.findFirst({ where: { id: data.seriesId, churchId }, select: { id: true } });
       if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      // Collect who's affected before the cascade wipes the evidence, delete the
+      // series' day-linked prayers (they don't cascade — dayId would just null out),
+      // then rebuild each affected member's streak/stars from what remains.
+      const dayIds = (await prisma.day.findMany({ where: { seriesId: data.seriesId }, select: { id: true } })).map((d) => d.id);
+      let affected: string[] = [];
+      if (dayIds.length) {
+        const [progUsers, prayerUsers] = await Promise.all([
+          prisma.dayProgress.findMany({ where: { dayId: { in: dayIds } }, select: { userId: true }, distinct: ["userId"] }),
+          prisma.prayer.findMany({ where: { dayId: { in: dayIds } }, select: { userId: true }, distinct: ["userId"] }),
+        ]);
+        affected = Array.from(new Set([...progUsers, ...prayerUsers].map((u) => u.userId)));
+        await prisma.prayer.deleteMany({ where: { dayId: { in: dayIds } } });
+      }
       await prisma.series.delete({ where: { id: data.seriesId } });
+      for (const uid of affected) {
+        const completions = await prisma.dayProgress.findMany({ where: { userId: uid, completed: true }, select: { completedAt: true, pointsEarned: true } });
+        try { await rebuildStreakFromHistory(uid, completions); } catch {}
+      }
       return NextResponse.json({ ok: true });
     }
     case "publish": {
