@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { prayerRoom } from "@/lib/feed";
+import { prayerRoom, rollbackDayProgress } from "@/lib/feed";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const user = await requireUser();
@@ -26,7 +26,15 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const sp = new URL(req.url).searchParams;
   const id = sp.get("id"); const dayId = sp.get("dayId");
-  if (id) { await prisma.prayer.deleteMany({ where: { id, userId: user.id } }); return NextResponse.json({ ok: true }); }
-  if (dayId) { await prisma.prayer.deleteMany({ where: { userId: user.id, dayId } }); return NextResponse.json({ ok: true }); }
+  if (id) {
+    const p = await prisma.prayer.findFirst({ where: { id, userId: user.id }, select: { id: true, dayId: true } });
+    if (p) { await prisma.prayer.delete({ where: { id: p.id } }); if (p.dayId) await rollbackDayProgress(user.id, p.dayId, 2); }
+    return NextResponse.json({ ok: true });
+  }
+  if (dayId) {
+    await prisma.prayer.deleteMany({ where: { userId: user.id, dayId } });
+    await rollbackDayProgress(user.id, dayId, 2);
+    return NextResponse.json({ ok: true });
+  }
   return NextResponse.json({ error: "bad request" }, { status: 400 });
 }

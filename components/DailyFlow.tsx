@@ -180,15 +180,20 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
     saveReflection(q, body, next);
   }
   async function deleteReflection(q: number, j: number) {
-    if (!confirm("Delete this reflection? It will also disappear from the community feed. This can't be undone.")) return;
+    if (!confirm("Delete this reflection? It will be removed from the community feed and the day will no longer count as completed. This can't be undone.")) return;
     await fetch(`/api/reflections?dayId=${data!.id}&questionIndex=${q}`, { method: "DELETE" });
     setReflectAnswers((prev) => { const arr = [...(prev[q] ?? [])]; arr.splice(j, 1); return { ...prev, [q]: arr }; });
+    setAlreadyDone(false); setShowComplete(false);
+    setStage("reflect"); setActiveQ(q);
+    router.refresh();
   }
   async function deletePrayer() {
-    if (!confirm(`Delete your prayer?${prayerShare ? " It will also be removed from the prayer room." : ""} This can't be undone.`)) return;
+    if (!confirm(`Delete your prayer?${prayerShare ? " It will be removed from the prayer room and" : ""} the day will no longer count as completed. This can't be undone.`)) return;
     await fetch(`/api/prayers?dayId=${data!.id}`, { method: "DELETE" });
     setPrayerText(null); setEditingPrayer(false);
-    if (stage === "complete") setStage("prayer");
+    setAlreadyDone(false); setShowComplete(false);
+    setStage("prayer");
+    router.refresh();
   }
   async function savePrayer(body: string, shared: boolean) {
     await fetch("/api/prayers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dayId: data!.id, body, shared, anonymous: false }) });

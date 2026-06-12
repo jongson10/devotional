@@ -10,6 +10,22 @@ import { isDayOpen } from "@/lib/unlock";
 
 export type FeedUser = { id: string; churchId: string | null };
 
+// Roll a day's progress back to `toStep` (e.g. after the user deletes a reflection or prayer).
+// Un-completes the day, trims its earned points to the new step, and rebuilds streak/points
+// in Redis from the remaining completed days so the totals stay honest.
+const ROLLBACK_STEP_WEIGHTS = [0.17, 0.33, 0.33, 0.17];
+export async function rollbackDayProgress(userId: string, dayId: string, toStep: number) {
+  const prog = await prisma.dayProgress.findUnique({ where: { userId_dayId: { userId, dayId } } });
+  if (!prog || prog.step <= toStep) return;
+  const day = await prisma.day.findUnique({ where: { id: dayId }, select: { pointsReward: true } });
+  const total = day?.pointsReward ?? 0;
+  let acc = 0;
+  for (let i = 0; i < toStep && i < ROLLBACK_STEP_WEIGHTS.length; i++) acc += ROLLBACK_STEP_WEIGHTS[i];
+  await prisma.dayProgress.update({ where: { userId_dayId: { userId, dayId } }, data: { step: toStep, completed: false, pointsEarned: Math.round(total * acc) } });
+  const completions = await prisma.dayProgress.findMany({ where: { userId, completed: true }, select: { completedAt: true, pointsEarned: true } });
+  try { await rebuildStreakFromHistory(userId, completions); } catch {}
+}
+
 // ---- Replies (one level, Twitter-style) on reflections/prayers ----
 // prisma.comment cast as any until the client is regenerated (prisma db push) in deploy.
 function commentNode(c: any, userId: string): any {

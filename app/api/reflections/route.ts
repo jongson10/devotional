@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { reflectionsFeed } from "@/lib/feed";
+import { reflectionsFeed, rollbackDayProgress } from "@/lib/feed";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const user = await requireUser();
@@ -22,8 +22,16 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const sp = new URL(req.url).searchParams;
   const id = sp.get("id"); const dayId = sp.get("dayId"); const qi = sp.get("questionIndex");
-  if (id) { await prisma.reflection.deleteMany({ where: { id, userId: user.id } }); return NextResponse.json({ ok: true }); }
-  if (dayId && qi !== null) { await prisma.reflection.deleteMany({ where: { userId: user.id, dayId, questionIndex: Number(qi) } }); return NextResponse.json({ ok: true }); }
+  if (id) {
+    const r = await prisma.reflection.findFirst({ where: { id, userId: user.id }, select: { id: true, dayId: true } });
+    if (r) { await prisma.reflection.delete({ where: { id: r.id } }); await rollbackDayProgress(user.id, r.dayId, 1); }
+    return NextResponse.json({ ok: true });
+  }
+  if (dayId && qi !== null) {
+    await prisma.reflection.deleteMany({ where: { userId: user.id, dayId, questionIndex: Number(qi) } });
+    await rollbackDayProgress(user.id, dayId, 1);
+    return NextResponse.json({ ok: true });
+  }
   return NextResponse.json({ error: "bad request" }, { status: 400 });
 }
 export async function GET(req: NextRequest) {
