@@ -134,7 +134,13 @@ function Maintenance() {
     setBusy(true); setMsg(null);
     const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reconcileProgress" }) });
     const j = await r.json(); setBusy(false);
-    setMsg(j.error ? String(j.error) : `Checked ${j.checked} completed day${j.checked === 1 ? "" : "s"}; reset ${j.fixed}.`);
+    if (j.error) { setMsg(String(j.error)); return; }
+    const lines = [
+      `Checked ${j.checked} completed day${j.checked === 1 ? "" : "s"}; reset ${j.fixed}; rebuilt stats for ${j.rebuilt ?? 0} member${(j.rebuilt ?? 0) === 1 ? "" : "s"}.`,
+      ...(j.results ?? []),
+      ...(j.errors ?? []).map((e: string) => `⚠ ${e}`),
+    ];
+    setMsg(lines.join("\n"));
   }
   return (
     <Card>
@@ -143,7 +149,7 @@ function Maintenance() {
         Rechecks every completed day for all members and un-completes any that are missing their reflections or prayer, then rebuilds every member's streak and stars from their remaining completed days (fixes stale stats from older deletes or removed series).
       </p>
       <button className="btn-ghost" style={{ fontSize: 13, padding: "10px 14px" }} onClick={run} disabled={busy}>{busy ? "Checking…" : "Recheck completion marks"}</button>
-      {msg && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>{msg}</div>}
+      {msg && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8, whiteSpace: "pre-line", lineHeight: 1.6 }}>{msg}</div>}
     </Card>
   );
 }

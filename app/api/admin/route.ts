@@ -154,12 +154,21 @@ export async function POST(req: NextRequest) {
       }
       // Then rebuild every member's streak/stars from their remaining completed days,
       // catching anything stale from old deletes (e.g. a removed series).
-      const members = await prisma.user.findMany({ where: { churchId }, select: { id: true } });
+      const members = await prisma.user.findMany({ where: { churchId }, select: { id: true, name: true } });
+      let rebuilt = 0;
+      const errors: string[] = [];
+      const results: string[] = [];
       for (const m of members) {
         const completions = await prisma.dayProgress.findMany({ where: { userId: m.id, completed: true }, select: { completedAt: true, pointsEarned: true } });
-        try { await rebuildStreakFromHistory(m.id, completions); } catch {}
+        try {
+          const s = await rebuildStreakFromHistory(m.id, completions);
+          rebuilt++;
+          results.push(`${m.name ?? m.id.slice(0, 6)}: ${completions.length} completed days → streak ${s.streak}, ${s.points} stars`);
+        } catch (e: any) {
+          errors.push(`${m.name ?? m.id.slice(0, 6)}: ${e?.message ?? "unknown error"}`);
+        }
       }
-      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt: members.length });
+      return NextResponse.json({ ok: true, checked: progs.length, fixed, rebuilt, results, errors });
     }
     case "setEmail": {
       const { userId } = data;
