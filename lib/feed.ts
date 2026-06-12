@@ -163,7 +163,7 @@ export async function adminSeriesView(user: FeedUser) {
   const churchId = user.churchId;
   const [series, church] = await Promise.all([
     prisma.series.findMany({ where: { churchId }, orderBy: [{ startDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], include: { days: { orderBy: { order: "asc" } } } }),
-    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true, reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true, introText: true, bannerEnabled: true, bannerText: true } as any }),
+    prisma.church.findUnique({ where: { id: churchId }, select: { name: true, timezone: true, reflectionFeedEnabled: true, prayerRoomEnabled: true, gamificationEnabled: true, introText: true, bannerEnabled: true, bannerText: true, joinCode: true } as any }),
   ]);
   return { series, church };
 }

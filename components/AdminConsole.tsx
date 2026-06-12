@@ -88,11 +88,20 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
   const [comm, setComm] = useState<boolean>(initialChurch?.gamificationEnabled ?? true);
   const [bannerOn, setBannerOn] = useState<boolean>(initialChurch?.bannerEnabled ?? false);
   const [banner, setBanner] = useState<string>(initialChurch?.bannerText ?? "");
+  const [joinCode, setJoinCode] = useState<string>(initialChurch?.joinCode ?? "");
+  const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
   async function save() {
-    setSaved(false);
-    await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name, introText: intro, reflectionFeedEnabled: refl, prayerRoomEnabled: pray, gamificationEnabled: comm, bannerEnabled: bannerOn, bannerText: banner }) });
+    setSaved(false); setSaveErr(null);
+    const r = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveSettings", timezone: tz, name, introText: intro, reflectionFeedEnabled: refl, prayerRoomEnabled: pray, gamificationEnabled: comm, bannerEnabled: bannerOn, bannerText: banner, joinCode }) });
+    const j = await r.json();
+    if (j.error) { setSaveErr(String(j.error)); return; }
     setSaved(true); setTimeout(() => setSaved(false), 2500);
+  }
+  function copyInvite() {
+    const link = `${window.location.origin}/join?code=${encodeURIComponent(joinCode.trim().toUpperCase())}`;
+    navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
   return (
     <>
@@ -108,6 +117,14 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
       <Field label="Welcome intro (global)" hint="Shown before today's passage. Leave blank for the default; a series can override it.">
         <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="Begin by reading today's passage. Then we'll walk through the lesson, reflection, and a closing prayer." />
       </Field>
+      <Field label="Join code" hint="New members enter this at sign-in (or use the invite link) to join your church. 3–16 letters/numbers.">
+        <input style={inputStyle} value={joinCode} autoCapitalize="characters" autoCorrect="off" onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="e.g. MVCEM" />
+      </Field>
+      {joinCode.trim() && (
+        <button onClick={copyInvite} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "var(--accent)", fontSize: 13, fontWeight: 500, padding: "0 0 12px", marginTop: -4 }}>
+          <i className={`ti ${copied ? "ti-check" : "ti-link"}`} /> {copied ? "Invite link copied" : "Copy invite link"}
+        </button>
+      )}
       <span className="label" style={{ display: "block", marginTop: 6, marginBottom: 2 }}>Home banner</span>
       <Toggle label="Show banner on home page" on={bannerOn} onChange={setBannerOn} />
       {bannerOn && (
@@ -121,6 +138,7 @@ function Settings({ initialChurch = null }: { initialChurch?: any }) {
       <Toggle label="Community" on={comm} onChange={setComm} />
       <button className="btn-primary" style={{ marginTop: 12 }} onClick={save}>Save settings</button>
       {saved && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8, textAlign: "center" }}>Saved.</div>}
+      {saveErr && <div style={{ fontSize: 12, color: "#b4452f", marginTop: 8, textAlign: "center" }}>{saveErr}</div>}
     </Card>
     <Maintenance />
     </>

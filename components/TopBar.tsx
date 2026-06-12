@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 export default function TopBar({ isAdmin: _isAdmin = false, nav }: { isAdmin?: boolean; nav?: { reflections: boolean; prayer: boolean; community: boolean } }) {
   const path = usePathname();
-  if (path?.startsWith("/admin") || path?.startsWith("/login")) return null;
+  if (path?.startsWith("/admin") || path?.startsWith("/login") || path?.startsWith("/join")) return null;
   const n = nav ?? { reflections: true, prayer: true, community: true };
   const is = (href: string) => href === "/" ? path === "/" : path?.startsWith(href);
   return (

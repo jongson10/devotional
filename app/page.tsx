@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const user = await requireUser();
   if (!user) redirect("/login");
+  if (!user.churchId) redirect("/join");
 
   const [church, allSeries, streak] = await Promise.all([
     user.churchId ? (prisma.church.findUnique({ where: { id: user.churchId }, select: { timezone: true, name: true, bannerEnabled: true, bannerText: true } as any }) as Promise<any>) : Promise.resolve(null),

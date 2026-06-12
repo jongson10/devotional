@@ -71,6 +71,7 @@ model Church {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  joinCode  String?  @unique
   prayerRoomEnabled     Boolean @default(true)
   reflectionFeedEnabled Boolean @default(true)
   gamificationEnabled   Boolean @default(true)

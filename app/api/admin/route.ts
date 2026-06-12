@@ -60,6 +60,15 @@ export async function POST(req: NextRequest) {
       if (typeof data.introText === "string") upd.introText = data.introText.trim().slice(0, 600) || null;
       if (typeof data.bannerEnabled === "boolean") upd.bannerEnabled = data.bannerEnabled;
       if (typeof data.bannerText === "string") upd.bannerText = data.bannerText.trim().slice(0, 500) || null;
+      if (typeof data.joinCode === "string") {
+        const jc = data.joinCode.trim().toUpperCase();
+        if (jc && !/^[A-Z0-9]{3,16}$/.test(jc)) return NextResponse.json({ error: "Join code must be 3–16 letters/numbers." }, { status: 400 });
+        if (jc) {
+          const taken = await prisma.church.findFirst({ where: { joinCode: jc, NOT: { id: churchId } } as any, select: { id: true } });
+          if (taken) return NextResponse.json({ error: "That join code is already taken." }, { status: 409 });
+        }
+        upd.joinCode = jc || null;
+      }
       await prisma.church.update({ where: { id: churchId }, data: upd });
       return NextResponse.json({ ok: true });
     }

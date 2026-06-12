@@ -6,12 +6,14 @@ function LoginInner() {
   const params = useSearchParams();
   const check = params.get("check");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState((params.get("code") ?? "").toUpperCase());
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   async function submit() {
     const e = email.trim(); if (!e || !e.includes("@")) return;
+    const c = code.trim().toUpperCase();
     setBusy(true);
-    await signIn("nodemailer", { email: e, redirect: false, callbackUrl: "/" });
+    await signIn("nodemailer", { email: e, redirect: false, callbackUrl: c ? `/join?code=${encodeURIComponent(c)}` : "/" });
     setBusy(false); setSent(true);
   }
   return (
@@ -30,6 +32,9 @@ function LoginInner() {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="glass" style={{ borderRadius: 14, padding: "12px 16px" }}>
             <input type="email" placeholder="you@email.com" value={email} autoComplete="email" onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} style={{ fontSize: 15 }} />
+          </div>
+          <div className="glass" style={{ borderRadius: 14, padding: "12px 16px" }}>
+            <input placeholder="Church code (first-time members)" value={code} autoCapitalize="characters" autoCorrect="off" onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} style={{ fontSize: 15, letterSpacing: "0.06em" }} />
           </div>
           <button className="btn-primary" onClick={submit} disabled={busy}>{busy ? "Sending…" : <>Send me a sign-in link <i className="ti ti-arrow-right" /></>}</button>
           <p style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", marginTop: 4 }}>No password needed. We'll email you a secure link.</p>
