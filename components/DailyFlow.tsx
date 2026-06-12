@@ -123,7 +123,7 @@ function deriveInitialState(initial: Initial): DerivedState {
   return { err: null, data: d, reflectAnswers, reflectShared, prayerText: savedPrayer?.body ?? null, prayerShare: !!savedPrayer?.shared, revealed, stage, activeQ, alreadyDone };
 }
 
-export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { reflections: boolean; prayer: boolean; community: boolean } }) {
+export default function DailyFlow({ initial, nav, me }: { initial: Initial; nav?: { reflections: boolean; prayer: boolean; community: boolean }; me?: { name: string; image: string | null } }) {
   const showReflections = nav?.reflections ?? true;
   const showPrayers = nav?.prayer ?? true;
   const canSeeFeed = showReflections || showPrayers;
@@ -356,7 +356,7 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
       </div>
 
       {showComplete && <CompleteOverlay streak={streak} points={points} onSeeFeed={canSeeFeed ? () => setShowFeed(true) : undefined} onDone={() => router.push("/")} />}
-      {showFeed && (<CommunitySheet dayId={data.id} myPrayer={prayerShare ? prayerText : null} reflectionsOn={showReflections} prayersOn={showPrayers} onClose={() => { setShowFeed(false); router.push("/"); }} />)}
+      {showFeed && (<CommunitySheet dayId={data.id} me={me} myPrayer={prayerShare ? prayerText : null} reflectionsOn={showReflections} prayersOn={showPrayers} onClose={() => { setShowFeed(false); router.push("/"); }} />)}
     </div>
   );
 }
@@ -412,7 +412,7 @@ function CompleteOverlay({ streak, points, onSeeFeed, onDone }: { streak: number
   );
 }
 
-function CommunitySheet({ dayId, myPrayer, reflectionsOn, prayersOn, onClose }: { dayId: string; myPrayer: string | null; reflectionsOn: boolean; prayersOn: boolean; onClose: () => void }) {
+function CommunitySheet({ dayId, me, myPrayer, reflectionsOn, prayersOn, onClose }: { dayId: string; me?: { name: string; image: string | null }; myPrayer: string | null; reflectionsOn: boolean; prayersOn: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"reflections" | "prayers">(reflectionsOn ? "reflections" : "prayers");
   const [reflections, setReflections] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -466,9 +466,9 @@ function CommunitySheet({ dayId, myPrayer, reflectionsOn, prayersOn, onClose }: 
           {!loading && tab === "reflections" && reflections.length === 0 && <Empty text="No shared reflections yet." />}
           {tab === "prayers" && myPrayer && (
             <div style={{ display: "flex", gap: 9, marginBottom: 14 }}>
-              <Avatar name="You" size={30} />
+              <Avatar name={me?.name || "You"} image={me?.image} size={30} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>You<span style={{ color: "var(--accent)", fontWeight: 400 }}> · shared just now</span></div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{me?.name || "You"}<span style={{ color: "var(--accent)", fontWeight: 400 }}> · shared just now</span></div>
                 <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--body)", margin: "2px 0 5px" }}>{myPrayer}</div>
               </div>
             </div>
