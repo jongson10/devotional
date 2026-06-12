@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         passageRefsExtra: d.passageRefsExtra, pastorNote: d.pastorNote, teaching: d.teaching, reflectionQuestions: d.reflectionQuestions as any, prayerPrompt: d.prayerPrompt, pointsReward: d.pointsReward,
       }));
       if (days.length) await prisma.day.createMany({ data: days });
-      return NextResponse.json({ series: { id: series.id, title: series.title }, daysCreated: days.length });
+      return NextResponse.json({ series: { id: series.id, title: series.title }, daysCreated: days.length, startDate: parsed.startDate });
     }
     case "setRole": {
       const { userId, role } = data;

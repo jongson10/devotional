@@ -32,7 +32,7 @@ function parseDayHeading(h: string, fallbackOrder: number): { order: number; tit
 }
 
 export function parseSeriesMarkdown(md: string): { error: string } | ParsedSeries {
-  const text = (md || "").replace(/\r\n/g, "\n").trim();
+  const text = (md || "").replace(/^﻿/, "").replace(/\r\n?/g, "\n").trim();
   if (!text) return { error: "The file is empty." };
 
   const titleMatch = text.match(/^#\s+(.+)$/m);

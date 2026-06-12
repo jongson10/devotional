@@ -224,6 +224,7 @@ function SeriesImporter({ onImported, onCancel }: { onImported: () => void; onCa
     const res = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "importSeries", markdown: md }) });
     const j = await res.json(); setBusy(false);
     if (j.error) { setErr(j.error); return; }
+    if (!j.startDate) alert(`Imported "${j.series?.title}" (${j.daysCreated} days) — but no Start date was found, so days won't be date-locked. Add a "Start: YYYY-MM-DD" line near the top of the file, or set the date by editing the series.`);
     onImported();
   }
   return (
