@@ -56,6 +56,28 @@ function Rich({ text }: { text: string }) {
   );
 }
 
+// Kebab (3-dot) menu for inline actions on a post/answer.
+function ActionMenu({ items }: { items: { icon: string; label: string; danger?: boolean; onClick: () => void }[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative", flex: "none" }}>
+      <button onClick={() => setOpen((v) => !v)} aria-label="More options" aria-expanded={open} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 15, padding: "2px 4px" }}><i className="ti ti-dots-vertical" /></button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 14 }} />
+          <div style={{ position: "absolute", right: 0, top: 26, zIndex: 15, background: "var(--glassBg)", border: "1px solid var(--glassBorder)", borderRadius: 12, padding: 4, minWidth: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.14)" }}>
+            {items.map((it) => (
+              <button key={it.label} onClick={() => { setOpen(false); it.onClick(); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", background: "none", border: "none", padding: "9px 10px", fontSize: 13, fontWeight: 500, color: it.danger ? "#b4452f" : "var(--ink)", borderRadius: 8 }}>
+                <i className={`ti ${it.icon}`} style={{ fontSize: 15 }} /> {it.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 type Initial =
   | { error: string; status?: number }
   | { day: any; progress: { step: number; completed: boolean }; myReflections: { questionIndex: number; body: string }[]; myPrayer: { body: string; shared: boolean } | null };
@@ -269,9 +291,14 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
                       ) : (
                         <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 4 }}>
                           <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>{a}</div>
-                          <button onClick={() => { setEditingRef({ q: i, j }); setEditDraft(a); }} aria-label="Edit" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-pencil" /></button>
-                          <button onClick={() => toggleShareReflection(i)} aria-label={(reflectShared[i] ?? true) ? "Shared to the community feed — tap to make private" : "Private — tap to share"} title={(reflectShared[i] ?? true) ? "Shared — tap to make private" : "Private — tap to share"} style={{ background: "none", border: "none", color: (reflectShared[i] ?? true) ? accent : "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className={`ti ${(reflectShared[i] ?? true) ? "ti-users" : "ti-lock"}`} /></button>
-                          <button onClick={() => deleteReflection(i, j)} aria-label="Delete reflection" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-trash" /></button>
+                          {!(reflectShared[i] ?? true) && <i className="ti ti-lock" title="Private — only you can see this" aria-label="Private" style={{ fontSize: 12, color: "var(--muted)", paddingTop: 5, flex: "none" }} />}
+                          <ActionMenu items={[
+                            { icon: "ti-pencil", label: "Edit", onClick: () => { setEditingRef({ q: i, j }); setEditDraft(a); } },
+                            (reflectShared[i] ?? true)
+                              ? { icon: "ti-lock", label: "Make private", onClick: () => toggleShareReflection(i) }
+                              : { icon: "ti-users", label: "Share to feed", onClick: () => toggleShareReflection(i) },
+                            { icon: "ti-trash", label: "Delete", danger: true, onClick: () => deleteReflection(i, j) },
+                          ]} />
                         </div>
                       )
                     ))}
@@ -295,8 +322,10 @@ export default function DailyFlow({ initial, nav }: { initial: Initial; nav?: { 
             {prayerText && !editingPrayer && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                 <div style={{ flex: 1, fontSize: 15, lineHeight: 1.6, color: "var(--soft)", fontStyle: "italic" }}>{prayerText}{prayerShare && (<div style={{ fontSize: 11, color: accent, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-users" /> Shared to prayer room</div>)}</div>
-                <button onClick={() => { setEditingPrayer(true); setEditDraft(prayerText); }} aria-label="Edit prayer" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-pencil" /></button>
-                <button onClick={deletePrayer} aria-label="Delete prayer" style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, padding: 2, flex: "none" }}><i className="ti ti-trash" /></button>
+                <ActionMenu items={[
+                  { icon: "ti-pencil", label: "Edit", onClick: () => { setEditingPrayer(true); setEditDraft(prayerText); } },
+                  { icon: "ti-trash", label: "Delete", danger: true, onClick: deletePrayer },
+                ]} />
               </div>
             )}
             {editingPrayer && (
